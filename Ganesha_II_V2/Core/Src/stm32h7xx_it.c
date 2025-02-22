@@ -22,6 +22,7 @@
 #include "stm32h7xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "CD-PA1616S.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -199,5 +200,14 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
+//extern UART_HandleTypeDef huart8;
+/**
+  * @brief This function handles UART8 global interrupt.
+  */
+//void UART8_IRQHandler(void) {
+//    HAL_UART_IRQHandler(&huart8);  // ✅ Process UART8 interrupt
+//    GPS_UART_Callback(&huart8);    // ✅ Call GPS callback function
+//}
+
 
 /* USER CODE END 1 */

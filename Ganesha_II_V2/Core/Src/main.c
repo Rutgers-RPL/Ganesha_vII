@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "CD-PA1616S.h"
+
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -43,8 +45,6 @@
 
 I2C_HandleTypeDef hi2c2;
 
-SD_HandleTypeDef hsd1;
-
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi4;
@@ -62,7 +62,6 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C2_Init(void);
-static void MX_SDMMC1_SD_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI4_Init(void);
 static void MX_UART5_Init(void);
@@ -108,7 +107,6 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C2_Init();
-  MX_SDMMC1_SD_Init();
   MX_SPI1_Init();
   MX_SPI4_Init();
   MX_UART5_Init();
@@ -116,6 +114,16 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
+  GPS_Init();
+  uint8_t seq[256];
+  uint8_t gps_command[] = "#PUBX,00*33/r/n";
+  HAL_UART_Transmit(&huart8, gps_command, sizeof(gps_command)-1, HAL_MAX_DELAY);
+  HAL_Delay(10000);
+  HAL_UART_Receive_IT(&huart8,(uint8_t*)seq,256);
+  HAL_UART_Transmit(&huart8, gps_command, sizeof(gps_command)-1, HAL_MAX_DELAY);
+  HAL_UART_Receive(&huart8,(uint8_t*)seq,256,HAL_MAX_DELAY);
+  printf("%s\n", seq);
+
 
   /* USER CODE END 2 */
 
@@ -124,8 +132,14 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  HAL_UART_Receive(&huart8,(uint8_t*)seq,256,HAL_MAX_DELAY);
+	  printf("%s\n", seq);
+
+	  //GPS_t *gps_data = GPS_Process();  // Get GPS data struct
+	  //HAL_Delay(1000);
 
     /* USER CODE BEGIN 3 */
+
   }
   /* USER CODE END 3 */
 }
@@ -235,37 +249,6 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
-
-}
-
-/**
-  * @brief SDMMC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SDMMC1_SD_Init(void)
-{
-
-  /* USER CODE BEGIN SDMMC1_Init 0 */
-
-  /* USER CODE END SDMMC1_Init 0 */
-
-  /* USER CODE BEGIN SDMMC1_Init 1 */
-
-  /* USER CODE END SDMMC1_Init 1 */
-  hsd1.Instance = SDMMC1;
-  hsd1.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
-  hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-  hsd1.Init.BusWide = SDMMC_BUS_WIDE_4B;
-  hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd1.Init.ClockDiv = 0;
-  if (HAL_SD_Init(&hsd1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SDMMC1_Init 2 */
-
-  /* USER CODE END SDMMC1_Init 2 */
 
 }
 
@@ -477,7 +460,7 @@ static void MX_UART8_Init(void)
 
   /* USER CODE END UART8_Init 1 */
   huart8.Instance = UART8;
-  huart8.Init.BaudRate = 115200;
+  huart8.Init.BaudRate = 9600;
   huart8.Init.WordLength = UART_WORDLENGTH_8B;
   huart8.Init.StopBits = UART_STOPBITS_1;
   huart8.Init.Parity = UART_PARITY_NONE;
@@ -504,6 +487,8 @@ static void MX_UART8_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN UART8_Init 2 */
+//  HAL_NVIC_SetPriority(UART8_IRQn, 0, 0);
+//  HAL_NVIC_EnableIRQ(UART8_IRQn);
 
   /* USER CODE END UART8_Init 2 */
 
@@ -583,8 +568,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : GYR_INT_Pin ACC_INT_Pin SDMMC1_CD_Pin */
-  GPIO_InitStruct.Pin = GYR_INT_Pin|ACC_INT_Pin|SDMMC1_CD_Pin;
+  /*Configure GPIO pins : GYR_INT_Pin ACC_INT_Pin */
+  GPIO_InitStruct.Pin = GYR_INT_Pin|ACC_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);

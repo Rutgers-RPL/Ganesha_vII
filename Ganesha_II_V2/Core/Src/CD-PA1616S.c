@@ -11,6 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define GPS_BUFFER_SIZE 128  // Buffer size for storing NMEA sentence
+
+
 GPS_t gps;
 uint8_t rx_data;
 uint8_t rx_buffer[GPS_BUFFER_SIZE];
@@ -20,26 +23,26 @@ extern UART_HandleTypeDef huart8;  // Ensure this matches your UART
 
 // Initialize UART for GPS reception
 void GPS_Init(void) {
-   // HAL_UART_Receive_IT(GPS_UART, &rx_data, 1);
+   HAL_UART_Receive_IT(GPS_UART, &rx_data, 1);
 }
 
 // UART Interrupt Callback (Stores Incoming Data)
-//void GPS_UART_Callback(UART_HandleTypeDef *huart) {
-//    if (huart->Instance == UART8) {
-//    	// Check if interrupt is from correct UART
-//        if (rx_data == '\n') {  // End of an NMEA sentence
-//            gps.nmea_sentence[rx_index] = '\0';  // Null-terminate the string
-//            gps.data_ready = 1;  // Mark as ready to process
-//            rx_index = 0;  // Reset buffer index
-//        } else {
-//            gps.nmea_sentence[rx_index++] = rx_data;
-//            if (rx_index >= GPS_BUFFER_SIZE) {
-//                rx_index = 0;  // Prevent buffer overflow
-//            }
-//        }
-//        HAL_UART_Receive_IT(GPS_UART, &rx_data, 1);  // Restart reception
-//    }
-//}
+void GPS_UART_Callback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == UART8) {
+    	// Check if interrupt is from correct UART
+        if (rx_data == '\n') {  // End of an NMEA sentence
+            gps.nmea_sentence[rx_index] = '\0';  // Null-terminate the string
+            gps.data_ready = 1;  // Mark as ready to process
+            rx_index = 0;  // Reset buffer index
+        } else {
+            gps.nmea_sentence[rx_index++] = rx_data;
+            if (rx_index >= GPS_BUFFER_SIZE) {
+                rx_index = 0;  // Prevent buffer overflow
+            }
+        }
+        HAL_UART_Receive_IT(GPS_UART, &rx_data, 1);  // Restart reception
+    }
+}
 
 // Process GPS data using blocking `HAL_UART_Receive()`
 GPS_t* GPS_Process(void) {

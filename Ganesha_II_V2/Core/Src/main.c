@@ -131,9 +131,8 @@ char *extract_nmea_gga(const char *buffer) {
 }
 
 // Function to parse NMEA GGA sentence and store latitude/longitude as float
-int parse_nmea_gga(const char *nmea_sentence, float *latitude, float *longitude) {
+int parse_nmea_gga(const char *nmea_sentence, float *latitude, float *longitude, uint8_t *num_satellites) {
     if (!nmea_sentence) {
-        printf("No valid GGA sentence found.\n");
         return 0;  // Return failure
     }
 
@@ -157,6 +156,8 @@ int parse_nmea_gga(const char *nmea_sentence, float *latitude, float *longitude)
             strncpy(lon_str, token, sizeof(lon_str) - 1);
         } else if (field_count == 6) {  // E/W Indicator
             lon_dir = token[0];
+        } else if (field_count == 7) {  // Number of satellites used
+            *num_satellites = (uint8_t)atoi(token);  // Convert to uint8_t
         }
 
         token = strtok(NULL, ",");
@@ -164,7 +165,7 @@ int parse_nmea_gga(const char *nmea_sentence, float *latitude, float *longitude)
 
     // Handle case where GPS has no fix (latitude or longitude empty)
     if (strlen(lat_str) == 0 || strlen(lon_str) == 0) {
-        printf("No valid GPS fix available.\n");
+
         return 0;  // Return failure
     }
 
@@ -261,13 +262,18 @@ int main(void)
 	  char *gga_sentence = extract_nmea_gga((char *)gps_buffer);
 
 	      float latitude = 0.0f, longitude = 0.0f;
-	      if (parse_nmea_gga(gga_sentence, &latitude, &longitude)) {
+	      uint8_t num_satellites = 0;
+	      if (parse_nmea_gga(gga_sentence, &latitude, &longitude, &num_satellites)) {
 	          // Store values in the struct
 	          packet.latitude_degrees = latitude;
 	          packet.longitude_degrees = longitude;
+	          packet.numSatellites = num_satellites;
 	      }
 
-	      HAL_Delay(1000);
+
+	      HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
+
+
 
 
 //	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);

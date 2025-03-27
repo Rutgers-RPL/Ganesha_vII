@@ -41,6 +41,7 @@ typedef struct {
   float y;                         // 4 bytes
   float z;                         // 4 bytes
   uint32_t checksum;               // 4 bytes
+  int16_t magic_end;                   // 2 bytes
 } __attribute__((packed)) ganesha_II_packet;
 
 

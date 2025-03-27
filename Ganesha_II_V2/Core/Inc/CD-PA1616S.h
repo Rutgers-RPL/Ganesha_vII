@@ -8,35 +8,32 @@
 #ifndef INC_CD_PA1616S_H_
 #define INC_CD_PA1616S_H_
 
-#include "stm32h7xx_hal.h" /* Needed for UART */
+#include "stm32h7xx_hal.h"
 
-// Defines
+#define BUFFER_SIZE 256
 
+// Data struct for storing GPS info
+typedef struct __attribute__((packed)) {
+    float latitude_degrees;
+    float longitude_degrees;
+    float gps_hMSL_m;       // altitude above mean sea level
+    uint8_t numSatellites;
+    uint8_t gpsFixType;     // 0 = no fix, 1 = fix, 2 = DGPS fix, etc.
+} gps_data_packet_t;
 
+// Global GPS data (updated by DMA callback)
+extern gps_data_packet_t gps_packet;
+// DMA buffer
+extern uint8_t gps_dma_buffer[BUFFER_SIZE];
 
-#define GPS_UART &huart8  // Change to match your UART instance
-#define GPS_BUFFER_SIZE 128  // Reduced buffer size
-
-// GPS Data Structure (Only Latitude & Longitude)
-typedef struct {
-    char nmea_sentence[GPS_BUFFER_SIZE];  // Raw NMEA sentence
-    uint8_t data_ready;  // Flag indicating new data available
-
-    // Parsed GPS data
-    float latitude;
-    char lat_dir;
-    float longitude;
-    char lon_dir;
-} GPS_t;
-
-// Function Declarations
+// Initializes GPS DMA
 void GPS_Init(void);
-GPS_t* GPS_Process(void);
-void GPS_UART_Callback(UART_HandleTypeDef *huart);
-void GPS_ParseNMEA(GPS_t *gps);
 
+// DMA & Error Callbacks
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t offset);
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart);
 
-
-
+// Single function to parse GGA data from a buffer
+int ParseGPSData(const char *buffer, gps_data_packet_t *gps_data);
 
 #endif /* INC_CD_PA1616S_H_ */

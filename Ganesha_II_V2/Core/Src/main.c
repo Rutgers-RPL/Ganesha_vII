@@ -34,11 +34,12 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BUFFER_SIZE 256
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,16 +57,20 @@ SPI_HandleTypeDef hspi4;
 
 UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart8;
+DMA_HandleTypeDef hdma_uart8_rx;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
+//char gps_receive_buffer[BUFFER_SIZE];
+//uint8_t gps_dma_buffer[BUFFER_SIZE];
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI4_Init(void);
@@ -79,102 +84,39 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define NMEA_MAX_LEN 100
 
-// Function to convert NMEA latitude/longitude format to decimal degrees (float version)
-float convert_to_decimal_degrees(const char *nmea_coord, char direction) {
-    if (strlen(nmea_coord) < 4) return 0.0f;  // Invalid input check
 
-    float degrees, minutes;
-    char deg_str[3] = {0};  // Store degrees (for latitude, max 2 digits)
-    char min_str[10] = {0}; // Store minutes (remaining part)
-
-    if (direction == 'N' || direction == 'S') {
-        strncpy(deg_str, nmea_coord, 2);  // First 2 digits are degrees (latitude)
-        strcpy(min_str, nmea_coord + 2);
-    } else {
-        strncpy(deg_str, nmea_coord, 3);  // First 3 digits are degrees (longitude)
-        strcpy(min_str, nmea_coord + 3);
-    }
-
-    degrees = atof(deg_str);
-    minutes = atof(min_str) / 60.0f;
-
-    float decimal_degrees = degrees + minutes;
-
-    if (direction == 'S' || direction == 'W') {
-        decimal_degrees *= -1;  // South and West are negative
-    }
-
-    return decimal_degrees;
-}
-
-// Function to find and extract the GGA sentence from a larger buffer
-char *extract_nmea_gga(const char *buffer) {
-    char *start = strstr(buffer, "$GNGGA");
-    if (!start) {
-        start = strstr(buffer, "$GPGGA");  // Check for GPGGA if GNGGA is not found
-    }
-    if (!start) return NULL;  // No valid GGA sentence found
-
-    char *end = strstr(start, "\r\n");  // Find end of sentence
-    if (!end) return NULL;  // Malformed sentence
-
-    static char nmea_sentence[NMEA_MAX_LEN];
-    size_t len = end - start + 2;  // Include CRLF
-    if (len >= NMEA_MAX_LEN) len = NMEA_MAX_LEN - 1;
-
-    strncpy(nmea_sentence, start, len);
-    nmea_sentence[len] = '\0';
-
-    return nmea_sentence;
-}
-
-// Function to parse NMEA GGA sentence and store latitude/longitude as float
-int parse_nmea_gga(const char *nmea_sentence, float *latitude, float *longitude, uint8_t *num_satellites) {
-    if (!nmea_sentence) {
-        return 0;  // Return failure
-    }
-
-    char sentence_copy[NMEA_MAX_LEN];
-    strncpy(sentence_copy, nmea_sentence, NMEA_MAX_LEN - 1);
-    sentence_copy[NMEA_MAX_LEN - 1] = '\0';
-
-    // Split sentence using ","
-    char *token = strtok(sentence_copy, ",");
-    int field_count = 0;
-    char lat_str[15] = {0}, lon_str[15] = {0}, lat_dir = '\0', lon_dir = '\0';
-
-    while (token != NULL) {
-        field_count++;
-
-        if (field_count == 3) {  // Latitude
-            strncpy(lat_str, token, sizeof(lat_str) - 1);
-        } else if (field_count == 4) {  // N/S Indicator
-            lat_dir = token[0];
-        } else if (field_count == 5) {  // Longitude
-            strncpy(lon_str, token, sizeof(lon_str) - 1);
-        } else if (field_count == 6) {  // E/W Indicator
-            lon_dir = token[0];
-        } else if (field_count == 7) {  // Number of satellites used
-            *num_satellites = (uint8_t)atoi(token);  // Convert to uint8_t
-        }
-
-        token = strtok(NULL, ",");
-    }
-
-    // Handle case where GPS has no fix (latitude or longitude empty)
-    if (strlen(lat_str) == 0 || strlen(lon_str) == 0) {
-
-        return 0;  // Return failure
-    }
-
-    // Convert to decimal degrees (float)
-    *latitude = convert_to_decimal_degrees(lat_str, lat_dir);
-    *longitude = convert_to_decimal_degrees(lon_str, lon_dir);
-
-    return 1;  // Return success
-}
+//void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t offset){
+//	static uint16_t last_offset = 0;
+//
+//	 __HAL_UART_CLEAR_FLAG(&huart8, UART_FLAG_ORE);
+//
+//	if(offset != last_offset){
+//
+//		if(offset < last_offset){
+//			last_offset = 0;
+//		}
+//		while(last_offset < offset){
+//			process_character((char) gps_dma_buffer[last_offset]);
+//			++last_offset;
+//		}
+//	}
+//	HAL_UARTEx_ReceiveToIdle_DMA(&huart8, (uint8_t*)gps_dma_buffer, BUFFER_SIZE);
+//}
+//
+//void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+//
+//    if (huart->Instance == UART8) {
+//        // ✅ Clear Overrun Error Flag
+//        __HAL_UART_CLEAR_OREFLAG(&huart8);
+//
+//        // ✅ Restart DMA reception
+//        HAL_UARTEx_ReceiveToIdle_DMA(&huart8, (uint8_t*)gps_dma_buffer, BUFFER_SIZE);
+//    }
+//}
+//void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
+//	Error_Handler();
+//}
 /* USER CODE END 0 */
 
 /**
@@ -206,6 +148,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_SPI1_Init();
   MX_SPI4_Init();
@@ -214,33 +157,49 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-  //GPS_Init();
-//  uint8_t buffer[256] = "hi";
-//   uint8_t buffer1[256] = "hi";
-  //  uint8_t buffer2[256] = "hi";
-  //  uint8_t buffer3[256] = "hi";
-  //  uint8_t buffer4[256] = "hi";
-  //  uint8_t buffer5[256] = "hi";
-  //  uint8_t buffer6[256] = "hi";
-  //  uint8_t buffer7[256] = "hi";
+  GPS_Init();
 
-//   HAL_UART_Receive(&huart8, buffer, 256, HAL_MAX_DELAY);
-//   //HAL_Delay(1000);
-//   __HAL_UART_CLEAR_FLAG(&huart8, UART_FLAG_ORE);
-//
-//  char gps_command[] = "$PMTK104*37\r\n";
-//  HAL_UART_Transmit(&huart8, (uint8_t*)gps_command, strlen(gps_command), HAL_MAX_DELAY);
-//  //HAL_Delay(120000);
-//  char force_nmea[] = "$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n";
-//  HAL_UART_Transmit(&huart8, (uint8_t*)force_nmea, strlen(force_nmea), HAL_MAX_DELAY);
-//  HAL_Delay(1000);  // Wait for the GPS to apply settings
-//  HAL_UART_Receive(&huart8, (uint8_t*)seq, 256, HAL_MAX_DELAY);
 
-  //HAL_UART_Transmit(&huart8, gps_command, sizeof(gps_command)-1, HAL_MAX_DELAY);
-  //HAL_UART_Receive(&huart8,(uint8_t*)seq,256,HAL_MAX_DELAY);
-  //printf("%s\n", seq);
-  uint8_t gps_buffer[256];
-  ganesha_II_packet packet = {0};
+  ganesha_II_packet packet;
+  short magic = 0xBEEF;
+  packet.magic = magic;
+
+
+
+  packet.status = 0;
+      packet.time_us =0;
+      packet.main_voltage_v = 0.0f;
+      packet.pyro_voltage_v = 0.0f;
+      packet.numSatellites = 0;
+      packet.gpsFixType = 0;
+      packet.latitude_degrees = 0.0f;
+      packet.longitude_degrees = 0.0f;
+      packet.gps_hMSL_m = 0.0f;
+      packet.barometer_hMSL_m = 0.0f;
+      packet.temperature_c = 0.0f;
+      packet.acceleration_x_mss = 0.0f;
+      packet.acceleration_y_mss = 0.0f;
+      packet.acceleration_z_mss = 0.0f;
+      packet.angular_velocity_x_rads = 0.0f;
+      packet.angular_velocity_y_rads = 0.0f;
+      packet.angular_velocity_z_rads = 0.0f;
+      packet.gauss_x = 0.0f;
+      packet.gauss_y = 0.0f;
+      packet.gauss_z = 0.0f;
+      packet.kf_acceleration_mss = 0.0f;
+      packet.kf_velocity_ms = 0.0f;
+      packet.kf_position_m = 0.0f;
+      packet.w = 0.0f;
+      packet.x = 0.0f;
+      packet.y = 0.0f;
+      packet.z = 0.0f;
+      packet.checksum = 0;
+      packet.magic_end = 0xFA77;
+
+
+
+
+
 
 
   /* USER CODE END 2 */
@@ -255,23 +214,45 @@ int main(void)
 	  //GPS_t *gps_data = GPS_Process();
 
 
- 	  __HAL_UART_CLEAR_FLAG(&huart8, UART_FLAG_ORE);
-	  HAL_UART_Receive(&huart8, gps_buffer, 256, HAL_MAX_DELAY);
+//	  __HAL_UART_CLEAR_OREFLAG(&huart8);
+//	  HAL_UART_Receive(&huart8, gps_buffer, 256, HAL_MAX_DELAY);
+// 	   //✅ Copy the contents as a string
+//
+//	  char *gga_sentence = extract_nmea_gga((char *)gps_buffer);
+//
+//	      float latitude = 0.0f, longitude = 0.0f;
+//	      uint8_t num_satellites = 0;
+//	      if (parse_nmea_gga(gga_sentence, &latitude, &longitude, &num_satellites)) {
+//	          // Store values in the struct
+//	          packet.latitude_degrees = latitude;
+//	          packet.longitude_degrees = longitude;
+//	          packet.numSatellites = num_satellites;
+//	      }
+//
+	  packet.latitude_degrees = gps_packet.latitude_degrees;
+	  packet.longitude_degrees = gps_packet.longitude_degrees;
+	  packet.numSatellites = gps_packet.numSatellites;
+	  packet.gpsFixType = gps_packet.gpsFixType;
+	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
 
-	  char *gga_sentence = extract_nmea_gga((char *)gps_buffer);
+	           //Transmit or otherwise use the data
+	  //HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 
-	      float latitude = 0.0f, longitude = 0.0f;
-	      uint8_t num_satellites = 0;
-	      if (parse_nmea_gga(gga_sentence, &latitude, &longitude, &num_satellites)) {
-	          // Store values in the struct
-	          packet.latitude_degrees = latitude;
-	          packet.longitude_degrees = longitude;
-	          packet.numSatellites = num_satellites;
-	      }
+	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
+	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_FE);
+	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_NE);
+
+	  // Define your 16-bit value
+	// uint8_t magic[2] = {0xBE, 0xEF};  // Store the 16-bit value
+
+	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
+	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
+
+	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	      HAL_Delay(50);
 
 
-	      HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 
 
 
@@ -627,8 +608,8 @@ static void MX_UART8_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN UART8_Init 2 */
-//  HAL_NVIC_SetPriority(UART8_IRQn, 0, 0);
-//  HAL_NVIC_EnableIRQ(UART8_IRQn);
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart8,(uint8_t*)&gps_dma_buffer, BUFFER_SIZE);
+
 
   /* USER CODE END UART8_Init 2 */
 
@@ -667,6 +648,22 @@ static void MX_USB_OTG_FS_PCD_Init(void)
   /* USER CODE BEGIN USB_OTG_FS_Init 2 */
 
   /* USER CODE END USB_OTG_FS_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
 
 }
 

@@ -39,7 +39,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFER_SIZE 256
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -157,6 +157,7 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
+
   GPS_Init();
 
 
@@ -211,24 +212,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //GPS_t *gps_data = GPS_Process();
 
-
-//	  __HAL_UART_CLEAR_OREFLAG(&huart8);
-//	  HAL_UART_Receive(&huart8, gps_buffer, 256, HAL_MAX_DELAY);
-// 	   //✅ Copy the contents as a string
-//
-//	  char *gga_sentence = extract_nmea_gga((char *)gps_buffer);
-//
-//	      float latitude = 0.0f, longitude = 0.0f;
-//	      uint8_t num_satellites = 0;
-//	      if (parse_nmea_gga(gga_sentence, &latitude, &longitude, &num_satellites)) {
-//	          // Store values in the struct
-//	          packet.latitude_degrees = latitude;
-//	          packet.longitude_degrees = longitude;
-//	          packet.numSatellites = num_satellites;
-//	      }
-//
 	  packet.latitude_degrees = gps_packet.latitude_degrees;
 	  packet.longitude_degrees = gps_packet.longitude_degrees;
 	  packet.numSatellites = gps_packet.numSatellites;
@@ -237,7 +221,7 @@ int main(void)
 
 
 	           //Transmit or otherwise use the data
-	  //HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
+	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 
 	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_FE);

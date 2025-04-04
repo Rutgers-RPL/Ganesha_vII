@@ -10,7 +10,7 @@
 
 #include "stm32h7xx_hal.h"
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 128
 
 // Data struct for storing GPS info
 typedef struct __attribute__((packed)) {

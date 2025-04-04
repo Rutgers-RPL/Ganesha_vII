@@ -20,6 +20,9 @@ extern UART_HandleTypeDef huart8;      // GPS UART handle
 // 1) Initialize GPS DMA Reception
 //------------------------------------------------------------------------------
 void GPS_Init(void) {
+
+	char command[] = "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\x0d\x0a";
+	HAL_UART_Transmit(&huart8, (uint8_t*)command, sizeof(command) - 1, HAL_MAX_DELAY);
     HAL_UARTEx_ReceiveToIdle_DMA(&huart8, gps_dma_buffer, BUFFER_SIZE);
 }
 

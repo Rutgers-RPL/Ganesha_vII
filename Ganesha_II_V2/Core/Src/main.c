@@ -40,6 +40,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -84,39 +85,22 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint8_t camera_buffer[4];
+uint8_t camera_fired = 0;
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
-//void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t offset){
-//	static uint16_t last_offset = 0;
-//
-//	 __HAL_UART_CLEAR_FLAG(&huart8, UART_FLAG_ORE);
-//
-//	if(offset != last_offset){
-//
-//		if(offset < last_offset){
-//			last_offset = 0;
-//		}
-//		while(last_offset < offset){
-//			process_character((char) gps_dma_buffer[last_offset]);
-//			++last_offset;
-//		}
-//	}
-//	HAL_UARTEx_ReceiveToIdle_DMA(&huart8, (uint8_t*)gps_dma_buffer, BUFFER_SIZE);
-//}
-//
-//void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-//
-//    if (huart->Instance == UART8) {
-//        // ✅ Clear Overrun Error Flag
-//        __HAL_UART_CLEAR_OREFLAG(&huart8);
-//
-//        // ✅ Restart DMA reception
-//        HAL_UARTEx_ReceiveToIdle_DMA(&huart8, (uint8_t*)gps_dma_buffer, BUFFER_SIZE);
-//    }
-//}
-//void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
-//	Error_Handler();
-//}
+if(huart->Instance == UART5){
+	if(memcmp(camera_buffer, "FIRE", 4) == 0){
+			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+			camera_fired ^= 1;
+
+		}
+	    __HAL_UART_CLEAR_OREFLAG(&huart5);
+		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+}
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -127,6 +111,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
 
   /* USER CODE END 1 */
 
@@ -197,6 +182,9 @@ int main(void)
       packet.checksum = 0;
       packet.magic_end = 0xFA77;
 
+      __HAL_UART_CLEAR_OREFLAG(&huart5);
+      HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+
 
 
 
@@ -222,6 +210,8 @@ int main(void)
 
 	           //Transmit or otherwise use the data
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
+
+
 
 	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_FE);

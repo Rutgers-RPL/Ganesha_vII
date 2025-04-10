@@ -16,9 +16,8 @@ uint8_t gps_dma_buffer[BUFFER_SIZE];   // DMA reception buffer
 
 extern UART_HandleTypeDef huart8;      // GPS UART handle
 
-//------------------------------------------------------------------------------
-// 1) Initialize GPS DMA Reception
-//------------------------------------------------------------------------------
+
+// Initialize GPS DMA Reception
 void GPS_Init(void) {
 
 	char command[] = "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\x0d\x0a";
@@ -26,9 +25,8 @@ void GPS_Init(void) {
     HAL_UARTEx_ReceiveToIdle_DMA(&huart8, gps_dma_buffer, BUFFER_SIZE);
 }
 
-//------------------------------------------------------------------------------
-// 2) DMA Callback: Called when new GPS data arrives
-//------------------------------------------------------------------------------
+
+// DMA Callback: Called when GPS Buffer is filled or there is a gap in data transfer between GPS and the Pin
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t offset) {
     if (huart->Instance == UART8) {
         // Clear any Overrun error
@@ -42,9 +40,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t offset) {
     }
 }
 
-//------------------------------------------------------------------------------
-// 3) UART Error Callback
-//------------------------------------------------------------------------------
+
+// UART Error Callback in case error occurs in DMA call back
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == UART8) {
         // Clear Overrun
@@ -54,13 +51,11 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     }
 }
 
-//------------------------------------------------------------------------------
-// 4) ParseGPSData: Single function to find and parse $GNGGA / $GPGGA
+//  ParseGPSData: Single function to find and parse $GNGGA / $GPGGA
 //    Returns 1 if successful, 0 otherwise
-//------------------------------------------------------------------------------
 int ParseGPSData(const char *buffer, gps_data_packet_t *gps_data)
 {
-    // 4a) Search manually for either "$GNGGA" or "$GPGGA" in buffer
+    //Search manually for either "$GNGGA" or "$GPGGA" in buffer
     const char *gga_start = NULL;
     for (int i = 0; buffer[i] != '\0'; i++) {
         if (buffer[i] == '$') {
@@ -79,7 +74,7 @@ int ParseGPSData(const char *buffer, gps_data_packet_t *gps_data)
         return 0;
     }
 
-    // 4b) Copy one line (until CR or LF) into a local buffer
+    //  Copy one line (until CR or LF) into a local buffer
     char line[120];
     int idx = 0;
     while (gga_start[idx] != '\0' &&
@@ -92,7 +87,7 @@ int ParseGPSData(const char *buffer, gps_data_packet_t *gps_data)
     }
     line[idx] = '\0';
 
-    // 4c) Split into fields by commas. We'll store them in fields[0..].
+    // Split into fields by commas. We'll store them in fields[0..].
     char fields[20][20];
     memset(fields, 0, sizeof(fields));
     int fieldIndex = 0;
@@ -138,7 +133,7 @@ int ParseGPSData(const char *buffer, gps_data_packet_t *gps_data)
         return 0;
     }
 
-    // 4d) Inline conversion to decimal degrees (latitude)
+    // Inline conversion to decimal degrees (latitude)
     float lat = 0.0f;
     if (strlen(fields[2]) >= 4) {
         // For lat, first 2 digits are degrees, rest are minutes
@@ -153,7 +148,7 @@ int ParseGPSData(const char *buffer, gps_data_packet_t *gps_data)
         }
     }
 
-    // 4e) Inline conversion to decimal degrees (longitude)
+    // Inline conversion to decimal degrees (longitude)
     float lon = 0.0f;
     if (strlen(fields[4]) >= 4) {
         // For lon, first 3 digits are degrees, rest are minutes
@@ -168,12 +163,12 @@ int ParseGPSData(const char *buffer, gps_data_packet_t *gps_data)
         }
     }
 
-    // 4f) Fix quality, # of satellites, altitude
+    // Fix quality, # of satellites, altitude
     uint8_t fix = (uint8_t)atoi(fields[6]);
     uint8_t sats = (uint8_t)atoi(fields[7]);
     float alt = (fields[9][0] != '\0') ? atof(fields[9]) : 0.0f;
 
-    // 4g) Store in gps_data struct
+    // Store in gps_data struct
     gps_data->latitude_degrees = lat;
     gps_data->longitude_degrees = lon;
     gps_data->gpsFixType = fix;

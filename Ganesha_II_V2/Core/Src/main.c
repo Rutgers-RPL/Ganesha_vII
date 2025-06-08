@@ -151,7 +151,6 @@ int main(void)
   packet.magic = magic;
 
 
-
   packet.status = 0;
       packet.time_us =0;
       packet.main_voltage_v = 0.0f;
@@ -180,7 +179,6 @@ int main(void)
       packet.y = 0.0f;
       packet.z = 0.0f;
       packet.checksum = 0;
-      packet.magic_end = 0xFA77;
 
       __HAL_UART_CLEAR_OREFLAG(&huart5);
       HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
@@ -208,10 +206,13 @@ int main(void)
 	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
 
+
+
 	           //Transmit or otherwise use the data
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 
-
+	  //uint16_t magic = 0xBEEF;
+	  //HAL_UART_Transmit(&huart5, (uint8_t *)&magic, 2, HAL_MAX_DELAY);
 
 	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_FE);

@@ -50,7 +50,7 @@ int8_t bmp581_init(struct BMP581 *bmp581, SPI_HandleTypeDef *handle)
 }
 
 
-int8_t bmp581_get_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data);
+int8_t bmp581_get_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
 {
 	return bmp5_get_sensor_data(data, &bmp581->odr_config, &bmp581->device);
 }

@@ -101,6 +101,10 @@ if(huart->Instance == UART5){
 }
 }
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -184,10 +188,7 @@ int main(void)
       HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 
 
-
-
-
-
+  HAL_TIM_Base_Start_IT(&htim1);
 
   /* USER CODE END 2 */
 

@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "CD-PA1616S.h"
+#include "bmp581.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -88,18 +89,19 @@ static void MX_SPI2_Init(void);
 uint8_t camera_buffer[4];
 uint8_t camera_fired = 0;
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-
-if(huart->Instance == UART5){
-	if(memcmp(camera_buffer, "FIRE", 4) == 0){
-			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-			camera_fired ^= 1;
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart->Instance == UART5) {
+		if (memcmp(camera_buffer, "FIRE", 4) == 0) {
+				HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+				camera_fired ^= 1;
 
 		}
 	    __HAL_UART_CLEAR_OREFLAG(&huart5);
 		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+	}
 }
-}
+
+struct BMP581 bmp581;
 
 /* USER CODE END 0 */
 
@@ -144,7 +146,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   GPS_Init();
-
+  bmp581_init(&bmp581, &hi2c2);
 
   ganesha_II_packet packet;
   short magic = 0xBEEF;

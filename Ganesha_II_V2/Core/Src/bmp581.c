@@ -6,27 +6,27 @@
 
 #include <stdint.h>
 
-BMP5_INTF_RET_TYPE read_spi(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr)
+BMP5_INTF_RET_TYPE read_i2c(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
-	SPI_HandleTypeDef *handle = (SPI_HandleTypeDef*) intf_ptr;
-	return HAL_SPI_Receive_IT(handle, reg_data, (uint16_t) length);
+	I2C_HandleTypeDef *handle = (I2C_HandleTypeDef*) intf_ptr;
+	return HAL_I2C_Mem_Read(handle, BMP5_I2C_ADDR_PRIM << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, reg_data, length, HAL_MAX_DELAY);
 }
 
-BMP5_INTF_RET_TYPE write_spi(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr)
+BMP5_INTF_RET_TYPE write_i2c(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
-	SPI_HandleTypeDef *handle = (SPI_HandleTypeDef*) intf_ptr;
-	return HAL_SPI_Transmit_IT(handle, reg_data, (uint16_t) length);
+	I2C_HandleTypeDef *handle = (I2C_HandleTypeDef*) intf_ptr;
+	return HAL_I2C_Mem_Write(handle, BMP5_I2C_ADDR_PRIM << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, reg_data, length, HAL_MAX_DELAY);
 }
 
-int8_t bmp581_init(struct BMP581 *bmp581, SPI_HandleTypeDef *handle)
+int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 {
 	int8_t result = BMP5_OK;
 
-	// Use SPI by default, since that is wired on our end
+	// Use I2C by default, since that is wired on our end
 	bmp581->hi2c = handle;
-	bmp581->device.intf = BMP5_SPI_INTF;
-	bmp581->device.read = read_spi;
-	bmp581->device.write = write_spi;
+	bmp581->device.intf = BMP5_I2C_INTF;
+	bmp581->device.read = read_i2c;
+	bmp581->device.write = write_i2c;
 	bmp581->device.intf_ptr = handle;
 	bmp581->odr_config.odr = BMP5_ODR_240_HZ;
 

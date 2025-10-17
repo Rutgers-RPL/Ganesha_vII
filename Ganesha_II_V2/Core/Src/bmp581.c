@@ -1,9 +1,10 @@
 #include "bmp581.h"
 
+#include "bmp5.h"
 #include "bmp5_defs.h"
 #include "stm32h7xx_hal.h"
 
-#include <cstdint>
+#include <stdint.h>
 
 BMP5_INTF_RET_TYPE read_spi(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
@@ -26,7 +27,7 @@ int8_t bmp581_init(struct BMP581 *bmp581, SPI_HandleTypeDef *handle)
 	bmp581->device.intf = BMP5_SPI_INTF;
 	bmp581->device.read = read_spi;
 	bmp581->device.write = write_spi;
-	bmp581->device.intf_ptr = hi2c;
+	bmp581->device.intf_ptr = handle;
 	bmp581->odr_config.odr = BMP5_ODR_240_HZ;
 
 	// Initialize the device

@@ -37,10 +37,11 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 	bmp581->device.intf_ptr = handle;
 	bmp581->device.delay_us = delay;
 	bmp581->odr_config.odr = BMP5_ODR_240_HZ;
+	bmp581->odr_config.press_en = BMP5_ENABLE;
 
 	// Initialize the device
 	result = bmp5_init(&(bmp581->device));
-	if (result != BMP5_OK) {
+	if (result != BMP5_OK && result != BMP5_E_POWER_UP) {
 		return result;
 	}
 
@@ -55,11 +56,26 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 	if (result != BMP5_OK) {
 		return result;
 	}
+
+	result = bmp5_set_power_mode(BMP5_POWERMODE_NORMAL, &(bmp581->device));
 	return result;
 }
 
 
 int8_t bmp581_get_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
 {
-	return bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
+	int8_t result = bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
+	bmp581_update_altitude(bmp581, data);
+	return result;
+}
+
+void bmp581_update_altitude(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {
+	float mbar = (data->pressure)/100.0;
+	float feet = 145366.46*(1-pow((mbar/1013.25), 0.190284));
+	float meters = feet * 0.3048;
+	bmp581->altitude = meters;
+}
+
+int8_t bmp581_get_power_mode(struct BMP581 *bmp581, enum bmp5_powermode *powermode) {
+	return bmp5_get_power_mode(powermode, &(bmp581->device));
 }

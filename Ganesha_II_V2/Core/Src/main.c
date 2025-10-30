@@ -101,8 +101,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	}
 }
 
-struct BMP581 bmp581;
-
 /* USER CODE END 0 */
 
 /**
@@ -146,9 +144,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   GPS_Init();
+
+  struct BMP581 bmp581;
   int8_t bmp_init_value = bmp581_init(&bmp581, &hi2c2);
 
   struct bmp5_sensor_data bmp_data;
+  enum bmp5_powermode bmp_powermode;
 
   ganesha_II_packet packet;
   short magic = 0xBEEF;
@@ -230,6 +231,7 @@ int main(void)
 
 //	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 
+	  bmp581_get_power_mode(&bmp581, &bmp_powermode);
 	  bmp581_get_data(&bmp581, &bmp_data);
 	  HAL_Delay(50);
 

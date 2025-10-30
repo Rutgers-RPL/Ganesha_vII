@@ -146,7 +146,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   GPS_Init();
-  bmp581_init(&bmp581, &hi2c2);
+  int8_t bmp_init_value = bmp581_init(&bmp581, &hi2c2);
+
+  struct bmp5_sensor_data bmp_data;
 
   ganesha_II_packet packet;
   short magic = 0xBEEF;
@@ -226,13 +228,10 @@ int main(void)
 	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
 
-	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-	      HAL_Delay(50);
+//	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 
-
-
-
-
+	  bmp581_get_data(&bmp581, &bmp_data);
+	  HAL_Delay(50);
 
 //	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 //	  HAL_UART_Receive(&huart8, (uint8_t*)seq,256,HAL_MAX_DELAY);

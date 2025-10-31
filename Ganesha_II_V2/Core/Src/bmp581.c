@@ -39,9 +39,11 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 	bmp581->odr_config.odr = BMP5_ODR_240_HZ;
 	bmp581->odr_config.press_en = BMP5_ENABLE;
 
+	bmp5_soft_reset(&(bmp581->device));
+
 	// Initialize the device
 	result = bmp5_init(&(bmp581->device));
-	if (result != BMP5_OK && result != BMP5_E_POWER_UP) {
+	if (result != BMP5_OK) {
 		return result;
 	}
 

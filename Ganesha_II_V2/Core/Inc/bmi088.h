@@ -9,11 +9,24 @@
 #define INC_BMI088_H_
 
 #include "bmi08x.h"
+#include "stm32h7xx_hal.h"
+#include "stm32h743xx.h"
+
+#include <stdint.h>
+
+#define BMI088_ACCEL_PIN GPIO_PIN_0
+#define BMI088_GYRO_PIN GPIO_PIN_2
+#define BMI088_GPIO_PORT GPIOA
+
+struct bmi088_sensor_intf {
+	uint8_t gpio_pin;
+	SPI_HandleTypeDef* spi_handle;
+};
 
 BMI08_INTF_RET_TYPE bmi088_read_spi(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr);
 BMI08_INTF_RET_TYPE bmi088_write_spi(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr);
 void bmi088_delay(uint32_t period, void *intf_ptr);
-int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* accelerometer_handle, SPI_HandleTypeDef* gyro_handle);
+int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle, uint8_t accel_pin, uint8_t gyro_pin);
 int8_t bmi088_get_acceleration_data(struct bmi08_dev* bmi, bmi08_sensor_data* data);
 int8_t bmi088_get_gyro_data(struct bmi08_dev* bmi, bmi08_sensor_data* data);
 

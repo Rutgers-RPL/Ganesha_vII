@@ -7,31 +7,42 @@
 
 #include "bmi088.h"
 #include "bmi08_defs.h"
+#include "bmi08.h"
+#include "stm32h7xx_hal.h"
 
 #include <stdint.h>
 
 BMI08_INTF_RET_TYPE bmi088_read_spi(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr) {
-	SPI_HandleTypeDef* handle = (SPI_HandleTypeDef*) intf_ptr;
-	return HAL_SPI_Receive(handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
+	struct bmi088_sensor_intf* handle = (struct bmi088_sensor_intf*) intf_ptr;
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_SET);
+	BMI08_INTF_RET_TYPE ret =  HAL_SPI_Receive(handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_RESET);
+	return ret;
 }
 
 BMI08_INTF_RET_TYPE bmi088_write_spi(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr) {
-	SPI_HandleTypeDef* handle = (SPI_HandleTypeDef*) intf_ptr;
-	return HAL_SPI_Transmit(handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
+	struct bmi088_sensor_intf* handle = (struct bmi088_sensor_intf*) intf_ptr;
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_SET);
+	BMI08_INTF_RET_TYPE ret = HAL_SPI_Transmit(handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_RESET);
+	return ret;
 }
 
 void bmi088_delay(uint32_t period, void *intf_ptr) {
 	HAL_Delay(period*1000);
 };
 
-int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* accelerometer_handle, SPI_HandleTypeDef* gyro_handle) {
-	bmi->intf_ptr_accel = accelerometer_handle;
-	bmi->intf_ptr_gyro = gyro_handle;
+int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle) {
+	struct bmi088_sensor_intf accel_intf = { BMI088_ACCEL_PIN, spi_handle };
+	struct bmi088_sensor_intf gyro_intf = { BMI088_GYRO_PIN, spi_handle };
+
+	bmi->intf_ptr_accel = &accel_intf;
+	bmi->intf_ptr_gyro = &gyro_intf;
 	bmi->intf = BMI08_SPI_INTF;
 	bmi->variant = BMI088_VARIANT;
 	bmi->dummy_byte = 0x8e;
-	bmi->accel_cfg;
-	bmi->gyro_cfg;
+	bmi->accel_cfg; // TODO
+	bmi->gyro_cfg; // TODO
 	bmi->config_file_ptr = &bmi08x_config_file;
 	bmi->read_write_len = 64;
 	bmi->read = bmi088_read_spi;

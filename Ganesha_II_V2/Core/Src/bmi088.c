@@ -13,18 +13,18 @@
 #include <stdint.h>
 
 BMI08_INTF_RET_TYPE bmi088_read_spi(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr) {
-	struct bmi088_sensor_intf* handle = (struct bmi088_sensor_intf*) intf_ptr;
-	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_SET);
-	BMI08_INTF_RET_TYPE ret =  HAL_SPI_Receive(handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
-	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_RESET);
+	struct bmi088_sensor_intf* sensor_intf = (struct bmi088_sensor_intf*) intf_ptr;
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
+	BMI08_INTF_RET_TYPE ret =  HAL_SPI_Receive(sensor_intf->spi_handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_RESET);
 	return ret;
 }
 
 BMI08_INTF_RET_TYPE bmi088_write_spi(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr) {
-	struct bmi088_sensor_intf* handle = (struct bmi088_sensor_intf*) intf_ptr;
-	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_SET);
-	BMI08_INTF_RET_TYPE ret = HAL_SPI_Transmit(handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
-	HAL_GPIO_WritePin(BMI088_GPIO_PORT, handle->gpio_pin, GPIO_PIN_RESET);
+	struct bmi088_sensor_intf* sensor_intf = (struct bmi088_sensor_intf*) intf_ptr;
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
+	BMI08_INTF_RET_TYPE ret = HAL_SPI_Transmit(sensor_intf->spi_handle, reg_data, (uint16_t)len, HAL_MAX_DELAY);
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_RESET);
 	return ret;
 }
 

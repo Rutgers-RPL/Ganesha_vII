@@ -91,26 +91,34 @@ static void MX_TIM1_Init(void);
 uint8_t camera_buffer[4];
 uint8_t camera_fired = 0;
 
-//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-//
-//if(huart->Instance == UART5){
-//	if(memcmp(camera_buffer, "FIRE", 4) == 0){
-//			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-//			camera_fired ^= 1;
-//
-//		}
-//	    __HAL_UART_CLEAR_OREFLAG(&huart5);
-//		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
-//}
-//}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
+if(huart->Instance == UART5){
+	if(memcmp(camera_buffer, "FIRE", 4) == 0){
+			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+			// Timer started
+			HAL_TIM_Base_Start_IT(&htim1);
+			camera_fired ^= 1;
+
+		}
+	    __HAL_UART_CLEAR_OREFLAG(&huart5);
+		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+}
+}
+
+
+// Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-	// Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 1s
+	//  Timer Stopped
+	HAL_TIM_Base_STOP_IT(&htim1);
+	// Camera Stopped
+	HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+	camera_fired ^= 1;
+
+	// Timer Notes
+	// Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 0.5s
 	//Prescaler = 999, Counter = 7999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 1s
-	//Theory: Prescaler = 999, Counter = 39999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 10s
-	// Prescaler = 59999, Counter = 9999, APB2 Timer Clock = 8MHZ, Div By 4, Time = 75s
-	// Theory: Prescaler = 59999, Counter = 39999, APB2 Timer Clock = 8MHZ, Div By 4, Time = 180s
+	//Prescaler = 59999, Counter = 9999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 180s
 }
 
 /* USER CODE END 0 */
@@ -196,8 +204,7 @@ int main(void)
       packet.checksum = 0;
 
       __HAL_UART_CLEAR_OREFLAG(&huart8);
-      HAL_UART_Receive_IT(&huart8, camera_buffer, 4);
-      HAL_TIM_Base_Start_IT(&htim1);
+      HAL_UART_Receive_IT(&huart8, camera_buffer, 4)
   /* USER CODE END 2 */
 
   /* Infinite loop */

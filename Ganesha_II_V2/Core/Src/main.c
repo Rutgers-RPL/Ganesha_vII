@@ -24,6 +24,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "CD-PA1616S.h"
+#include "bmi08_defs.h"
+#include "bmi088.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -144,7 +146,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   GPS_Init();
-
+  struct bmi08_dev bmi_dev;
+  struct bmi08_sensor_data bmi_data;
+  int8_t bmi_init = bmi088_init(&bmi_dev, &hspi1);
 
   ganesha_II_packet packet;
   short magic = 0xBEEF;
@@ -224,7 +228,9 @@ int main(void)
 	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
 
-	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	      //HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	  	  bmi088_get_acceleration_data(&bmi_dev, &bmi_data);
+	  	  bmi088_get_gyro_data(&bmi_dev, &bmi_data);
 	      HAL_Delay(50);
 
 

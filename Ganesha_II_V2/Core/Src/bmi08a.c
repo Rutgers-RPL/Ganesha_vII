@@ -337,7 +337,7 @@ static void int_pin_channel_config(const struct bmi08_accel_int_channel_cfg *int
  *  It performs the selection of I2C/SPI read mechanism according to the
  *  selected interface and reads the chip-id of accel sensor.
  */
-int8_t f(struct bmi08_dev *dev)
+int8_t bmi08a_init(struct bmi08_dev *dev)
 {
     int8_t rslt;
     uint8_t chip_id = 0;

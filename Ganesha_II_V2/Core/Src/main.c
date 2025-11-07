@@ -56,6 +56,8 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi4;
 
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart8;
 DMA_HandleTypeDef hdma_uart8_rx;
@@ -79,6 +81,7 @@ static void MX_UART5_Init(void);
 static void MX_UART8_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_SPI2_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -88,21 +91,26 @@ static void MX_SPI2_Init(void);
 uint8_t camera_buffer[4];
 uint8_t camera_fired = 0;
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-
-if(huart->Instance == UART5){
-	if(memcmp(camera_buffer, "FIRE", 4) == 0){
-			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-			camera_fired ^= 1;
-
-		}
-	    __HAL_UART_CLEAR_OREFLAG(&huart5);
-		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
-}
-}
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+//
+//if(huart->Instance == UART5){
+//	if(memcmp(camera_buffer, "FIRE", 4) == 0){
+//			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+//			camera_fired ^= 1;
+//
+//		}
+//	    __HAL_UART_CLEAR_OREFLAG(&huart5);
+//		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+//}
+//}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+	HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	// Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 1s
+	//Prescaler = 999, Counter = 7999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 1s
+	//Theory: Prescaler = 999, Counter = 39999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 10s
+	// Prescaler = 59999, Counter = 9999, APB2 Timer Clock = 8MHZ, Div By 4, Time = 75s
+	// Theory: Prescaler = 59999, Counter = 39999, APB2 Timer Clock = 8MHZ, Div By 4, Time = 180s
 }
 
 /* USER CODE END 0 */
@@ -115,7 +123,9 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	  char uart_buf[50];
+	  int uart_buf_len;
+	  uint16_t timer_val;
 
   /* USER CODE END 1 */
 
@@ -145,6 +155,7 @@ int main(void)
   MX_UART8_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_SPI2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
   GPS_Init();
@@ -184,18 +195,21 @@ int main(void)
       packet.z = 0.0f;
       packet.checksum = 0;
 
-      __HAL_UART_CLEAR_OREFLAG(&huart5);
-      HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
-
-
-  HAL_TIM_Base_Start_IT(&htim1);
-
+      __HAL_UART_CLEAR_OREFLAG(&huart8);
+      HAL_UART_Receive_IT(&huart8, camera_buffer, 4);
+      HAL_TIM_Base_Start_IT(&htim1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+      while (1)
+      {
+//    	    // If enough time has passed (1 second), toggle LED and get new timestamp
+//    	    if (__HAL_TIM_GET_COUNTER(&htim17) - timer_val >= 10000)
+//    	    {
+//    	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+//    	      timer_val = __HAL_TIM_GET_COUNTER(&htim17);
+//      }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -225,8 +239,8 @@ int main(void)
 	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
 
-	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-	      HAL_Delay(50);
+//	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+//	      HAL_Delay(50);
 
 
 
@@ -292,7 +306,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV16;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
@@ -494,6 +508,53 @@ static void MX_SPI4_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 60000 - 1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 10000 - 1;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV2;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
   * @brief UART5 Initialization Function
   * @param None
   * @retval None
@@ -651,8 +712,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -732,8 +793,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PYRO1_SENSE_GPIO_Port, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /*AnalogSwitch Config */
+  HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA1, SYSCFG_SWITCH_PA1_CLOSE);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -754,8 +818,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

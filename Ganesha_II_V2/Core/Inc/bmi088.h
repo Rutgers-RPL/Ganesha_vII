@@ -15,8 +15,8 @@
 
 #include <stdint.h>
 
-#define BMI088_ACCEL_PIN GPIO_PIN_1
-#define BMI088_GYRO_PIN GPIO_PIN_3
+#define BMI088_ACCEL_PIN GPIO_PIN_3
+#define BMI088_GYRO_PIN GPIO_PIN_1
 #define BMI088_GPIO_PORT GPIOA
 
 struct bmi088_sensor_intf {

@@ -33,6 +33,16 @@ void bmi088_delay(uint32_t period, void *intf_ptr) {
 	HAL_Delay(period*1000);
 };
 
+//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+//	if (GPIO_Pin == BMI088_ACCEL_PIN) {
+//
+//	}
+//
+//	if (GPIO_Pin == BMI088_GYRO_PIN) {
+//
+//	}
+//}
+
 int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle) {
 	struct bmi088_sensor_intf accel_intf = { BMI088_ACCEL_PIN, spi_handle };
 	struct bmi088_sensor_intf gyro_intf = { BMI088_GYRO_PIN, spi_handle };

@@ -688,7 +688,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : GYR_INT_Pin ACC_INT_Pin */
   GPIO_InitStruct.Pin = GYR_INT_Pin|ACC_INT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -736,6 +736,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PYRO1_SENSE_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(GYR_INT_EXTI_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(GYR_INT_EXTI_IRQn);
+
+  HAL_NVIC_SetPriority(ACC_INT_EXTI_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(ACC_INT_EXTI_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

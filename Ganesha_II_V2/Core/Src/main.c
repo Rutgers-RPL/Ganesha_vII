@@ -109,11 +109,12 @@ if(huart->Instance == UART5){
 
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	//  Timer Stopped
-	HAL_TIM_Base_STOP_IT(&htim1);
-	// Camera Stopped
-	HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-	camera_fired ^= 1;
+  if (camera_fired == 1):
+    //  Timer Stopped
+    HAL_TIM_Base_STOP_IT(&htim1);
+    // Camera Stopped
+    HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+    camera_fired ^= 1;
 
 	// Timer Notes
 	// Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 0.5s

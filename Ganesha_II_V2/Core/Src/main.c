@@ -23,9 +23,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "bmi08x.h"
+#include "bmi08_defs.h"
 #include "bmi088.h"
-#include "bmi.h"
 #include "CD-PA1616S.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -148,15 +147,15 @@ int main(void)
 
   GPS_Init();
 
+  struct bmi08_dev bmi088;
+  struct bmi08_sensor_data bmi088_accel_data;
+  struct bmi08_sensor_data bmi088_gyro_data;
+
+  bmi088_init(&bmi088, &hspi1);
+
   ganesha_II_packet packet;
   short magic = 0xBEEF;
   packet.magic = magic;
-
-  struct bmi08x_sensor_data accel_data;
-  struct bmi08x_sensor_data gyro_data;
-  struct bmi08x_dev bmi_dev;
-
-  int8_t bmi_init_value = bmi_init(&bmi_dev, &hspi1);
 
   packet.status = 0;
       packet.time_us =0;
@@ -233,8 +232,9 @@ int main(void)
 
 	      //HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 
-	  	  bmi_update_accel_data(&bmi_dev, &accel_data);
-	  	  bmi_update_gyro_data(&bmi_dev, &gyro_data);
+
+	  	  bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
+	  	  bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
 
 	      HAL_Delay(50);
 

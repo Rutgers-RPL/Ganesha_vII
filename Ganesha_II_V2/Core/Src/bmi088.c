@@ -91,7 +91,7 @@ int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle) {
 	bmi->accel_cfg.odr = BMI08_ACCEL_ODR_200_HZ;
 
 	bmi->gyro_cfg.power = BMI08_GYRO_PM_NORMAL;
-	bmi->gyro_cfg.range = BMI08_GYRO_RANGE_1000_DPS_DPS;
+	bmi->gyro_cfg.range = BMI08_GYRO_RANGE_1000_DPS;
 	bmi->gyro_cfg.bw = BMI08_GYRO_BW_23_ODR_200_HZ;
 	bmi->gyro_cfg.odr = BMI08_GYRO_BW_23_ODR_200_HZ;
 

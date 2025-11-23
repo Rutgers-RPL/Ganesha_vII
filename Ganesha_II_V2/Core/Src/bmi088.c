@@ -24,14 +24,14 @@ BMI08_INTF_RET_TYPE bmi088_read_spi(uint8_t reg_addr, uint8_t *reg_data, uint32_
 
 	if (ret != HAL_OK) {
 	    HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
-		return BMI08_E_COM_FAIL;
+		return ret;
 	}
 
 	ret = HAL_SPI_Receive(sensor_intf->spi_handle, reg_data, len, HAL_MAX_DELAY);
 
 	if (ret != HAL_OK) {
 	    HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
-		return BMI08_E_COM_FAIL;
+		return ret;
 	}
 
     HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
@@ -49,13 +49,15 @@ BMI08_INTF_RET_TYPE bmi088_write_spi(uint8_t reg_addr, const uint8_t *reg_data, 
 	ret = HAL_SPI_Transmit(sensor_intf->spi_handle, &reg_addr, 1, HAL_MAX_DELAY);
 
 	if (ret != HAL_OK) {
-		return BMI08_E_COM_FAIL;
+		HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
+		return ret;
 	}
 
 	ret = HAL_SPI_Transmit(sensor_intf->spi_handle, reg_data, len, HAL_MAX_DELAY);
 
 	if (ret != HAL_OK) {
-		return BMI08_E_COM_FAIL;
+		HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
+		return ret;
 	}
 
     HAL_GPIO_WritePin(BMI088_GPIO_PORT, sensor_intf->gpio_pin, GPIO_PIN_SET);
@@ -64,18 +66,8 @@ BMI08_INTF_RET_TYPE bmi088_write_spi(uint8_t reg_addr, const uint8_t *reg_data, 
 }
 
 void bmi088_delay(uint32_t period, void *intf_ptr) {
-	HAL_Delay(period*1000);
+	HAL_Delay(period);
 };
-
-//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-//	if (GPIO_Pin == BMI088_ACCEL_PIN) {
-//
-//	}
-//
-//	if (GPIO_Pin == BMI088_GYRO_PIN) {
-//
-//	}
-//}
 
 int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle) {
 	struct bmi088_sensor_intf accel_intf = { BMI088_ACCEL_PIN, spi_handle };
@@ -94,18 +86,24 @@ int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle) {
 	bmi->delay_us = bmi088_delay;
 
 	bmi->accel_cfg.power = BMI08_ACCEL_PM_ACTIVE;
-	bmi->accel_cfg.range = BMI088_ACCEL_RANGE_3G;
+	bmi->accel_cfg.range = BMI088_ACCEL_RANGE_6G;
 	bmi->accel_cfg.bw = BMI08_ACCEL_BW_NORMAL;
 	bmi->accel_cfg.odr = BMI08_ACCEL_ODR_200_HZ;
 
 	bmi->gyro_cfg.power = BMI08_GYRO_PM_NORMAL;
-	bmi->gyro_cfg.range = BMI08_GYRO_RANGE_2000_DPS;
-	bmi->gyro_cfg.bw = BMI08_GYRO_BW_32_ODR_100_HZ;
-	bmi->gyro_cfg.odr = BMI08_GYRO_BW_32_ODR_100_HZ;
+	bmi->gyro_cfg.range = BMI08_GYRO_RANGE_1000_DPS_DPS;
+	bmi->gyro_cfg.bw = BMI08_GYRO_BW_23_ODR_200_HZ;
+	bmi->gyro_cfg.odr = BMI08_GYRO_BW_23_ODR_200_HZ;
 
 	int8_t ret = BMI08_OK;
 
 	ret = bmi08xa_init(bmi);
+
+	if (ret != BMI08_OK) {
+		return ret;
+	}
+
+	ret = bmi08a_load_config_file(bmi);
 
 	if (ret != BMI08_OK) {
 		return ret;
@@ -156,10 +154,10 @@ int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle) {
 	return 0;
 }
 
-int8_t bmi088_update_accel_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* data) {
-	return bmi08a_get_data(data, bmi);
+int8_t bmi088_update_accel_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* accel_data) {
+	return bmi08a_get_data(accel_data, bmi);
 };
 
-int8_t bmi088_update_gyro_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* data) {
-	return bmi08g_get_data(data, bmi);
+int8_t bmi088_update_gyro_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* gyro_data) {
+	return bmi08g_get_data(gyro_data, bmi);
 };

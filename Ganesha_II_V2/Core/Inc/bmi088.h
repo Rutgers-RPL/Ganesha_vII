@@ -28,7 +28,8 @@ BMI08_INTF_RET_TYPE bmi088_read_spi(uint8_t reg_addr, uint8_t *reg_data, uint32_
 BMI08_INTF_RET_TYPE bmi088_write_spi(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr);
 void bmi088_delay(uint32_t period, void *intf_ptr);
 int8_t bmi088_init(struct bmi08_dev* bmi, SPI_HandleTypeDef* spi_handle);
-int8_t bmi088_update_accel_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* data);
-int8_t bmi088_update_gyro_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* data);
+int8_t bmi088_update_accel_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* accel_data);
+int8_t bmi088_update_gyro_data(struct bmi08_dev* bmi, struct bmi08_sensor_data* gyro_data);
+void bmi088_new_data_int_callback(struct bmi08_dev* bmi, struct bmi08_sensor_data* accel_data, struct bmi08_sensor_data* gyro_data);
 
 #endif /* INC_BMI088_H_ */

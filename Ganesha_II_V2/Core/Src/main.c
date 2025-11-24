@@ -147,7 +147,7 @@ int main(void)
 
   GPS_Init();
 
-  struct bmi08_dev bmi088;
+  struct BMI088 bmi088;
   struct bmi08_sensor_data bmi088_accel_data;
   struct bmi08_sensor_data bmi088_gyro_data;
 

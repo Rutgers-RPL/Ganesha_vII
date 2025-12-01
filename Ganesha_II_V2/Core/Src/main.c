@@ -120,7 +120,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }
 
-ganesha_II_packet packet;
 /* USER CODE END 0 */
 
 /**
@@ -169,6 +168,7 @@ int main(void)
 	  bmi088_init_ok = 1;
   }
 
+  ganesha_II_packet packet;
   short magic = 0xBEEF;
   packet.magic = magic;
 

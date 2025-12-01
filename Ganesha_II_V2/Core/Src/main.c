@@ -103,9 +103,24 @@ if(huart->Instance == UART5){
 }
 }
 
+uint8_t bmi088_init_ok = 0;
 struct BMI088 bmi088;
 struct bmi08_sensor_data bmi088_accel_data;
 struct bmi08_sensor_data bmi088_gyro_data;
+
+void HAL_GPIO_EXTI_Callback(uint16_t pin) {
+	if (pin == BMI088_GYRO_INT_PIN) {
+		if (bmi088_init_ok == 0) return;
+		bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
+	} else if (pin == BMI088_ACCEL_INT_PIN) {
+		if (bmi088_init_ok == 0) return;
+		bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
+	}
+
+	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
+}
+
+ganesha_II_packet packet;
 /* USER CODE END 0 */
 
 /**
@@ -150,9 +165,10 @@ int main(void)
 
   GPS_Init();
 
-  bmi088_init(&bmi088, &hspi2);
+  if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
+	  bmi088_init_ok = 1;
+  }
 
-  ganesha_II_packet packet;
   short magic = 0xBEEF;
   packet.magic = magic;
 
@@ -210,8 +226,13 @@ int main(void)
 	  packet.gpsFixType = gps_packet.gpsFixType;
 	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
+	  packet.acceleration_x_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.x);
+	  packet.acceleration_y_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.y);
+	  packet.acceleration_z_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.z);
 
-
+	  packet.angular_velocity_x_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.x);
+	  packet.angular_velocity_y_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.y);
+	  packet.angular_velocity_z_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.z);
 
 	           //Transmit or otherwise use the data
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
@@ -231,9 +252,6 @@ int main(void)
 
 	      //HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 
-
-	  	  bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
-	  	  bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
 
 	      HAL_Delay(50);
 

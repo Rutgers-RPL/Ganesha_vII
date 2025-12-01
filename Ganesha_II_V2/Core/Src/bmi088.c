@@ -71,13 +71,16 @@ void bmi088_delay_us(uint32_t period, void *intf_ptr) {
 };
 
 int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle) {
-	HAL_GPIO_WritePin(BMI088_GPIO_PORT, BMI088_ACCEL_PIN, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(BMI088_GPIO_PORT, BMI088_GYRO_PIN, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, BMI088_ACCEL_CS_PIN, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(BMI088_GPIO_PORT, BMI088_GYRO_CS_PIN, GPIO_PIN_SET);
 
-	bmi->accel_intf.gpio_pin = BMI088_ACCEL_PIN;
+	struct bmi08_accel_int_channel_cfg accel_new_data_int_cfg;
+	struct bmi08_gyro_int_channel_cfg gyro_new_data_int_cfg;
+
+	bmi->accel_intf.gpio_pin = BMI088_ACCEL_CS_PIN;
 	bmi->accel_intf.spi_handle = spi_handle;
 
-	bmi->gyro_intf.gpio_pin = BMI088_GYRO_PIN;
+	bmi->gyro_intf.gpio_pin = BMI088_GYRO_CS_PIN;
 	bmi->gyro_intf.spi_handle = spi_handle;
 
 	bmi->dev.intf_ptr_accel = &bmi->accel_intf;
@@ -98,6 +101,18 @@ int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle) {
 	bmi->dev.gyro_cfg.range = BMI08_GYRO_RANGE_1000_DPS;
 	bmi->dev.gyro_cfg.bw = BMI08_GYRO_BW_230_ODR_2000_HZ;
 	bmi->dev.gyro_cfg.odr = BMI08_GYRO_BW_230_ODR_2000_HZ;
+
+	accel_new_data_int_cfg.int_channel = BMI08_INT_CHANNEL_1;
+	accel_new_data_int_cfg.int_type = BMI08_ACCEL_INT_DATA_RDY;
+	accel_new_data_int_cfg.int_pin_cfg.output_mode = BMI08_INT_MODE_PUSH_PULL;
+	accel_new_data_int_cfg.int_pin_cfg.lvl = BMI08_INT_ACTIVE_HIGH;
+	accel_new_data_int_cfg.int_pin_cfg.enable_int_pin = BMI08_ENABLE;
+
+	gyro_new_data_int_cfg.int_channel = BMI08_INT_CHANNEL_3;
+	gyro_new_data_int_cfg.int_type = BMI08_GYRO_INT_DATA_RDY;
+	gyro_new_data_int_cfg.int_pin_cfg.output_mode = BMI08_INT_MODE_PUSH_PULL;
+	gyro_new_data_int_cfg.int_pin_cfg.lvl = BMI08_INT_ACTIVE_HIGH;
+	gyro_new_data_int_cfg.int_pin_cfg.enable_int_pin = BMI08_ENABLE;
 
 	int8_t ret = BMI08_OK;
 
@@ -131,6 +146,12 @@ int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle) {
 		return ret;
 	}
 
+	ret = bmi08a_set_int_config(&accel_new_data_int_cfg, &bmi->dev);
+
+	if (ret != BMI08_OK) {
+		return ret;
+	}
+
 	ret = bmi08g_soft_reset(&bmi->dev);
 
 	if (ret != BMI08_OK) {
@@ -150,6 +171,12 @@ int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle) {
 	}
 
 	ret = bmi08g_set_meas_conf(&bmi->dev);
+
+	if (ret != BMI08_OK) {
+		return ret;
+	}
+
+	ret = bmi08g_set_int_config(&gyro_new_data_int_cfg, &bmi->dev);
 
 	if (ret != BMI08_OK) {
 		return ret;

@@ -14,9 +14,15 @@
 #include "bmi08_defs.h"
 
 #include <stdint.h>
+#include <math.h>
 
-#define BMI088_ACCEL_PIN GPIO_PIN_3
-#define BMI088_GYRO_PIN GPIO_PIN_1
+#define MILLIG_TO_MSS_FLOAT(mg) ((float)(mg) * 0.00981)
+#define DEG_TO_RAD_FLOAT(deg) ((float)(deg) * (M_PI/180))
+
+#define BMI088_GYRO_INT_PIN GPIO_PIN_0
+#define BMI088_GYRO_CS_PIN GPIO_PIN_1
+#define BMI088_ACCEL_INT_PIN GPIO_PIN_2
+#define BMI088_ACCEL_CS_PIN GPIO_PIN_3
 #define BMI088_GPIO_PORT GPIOA
 
 struct bmi088_sensor_intf {

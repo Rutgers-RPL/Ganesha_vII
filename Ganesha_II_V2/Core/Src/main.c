@@ -189,8 +189,16 @@ int main(void)
 
   GPS_Init();
 
-  if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
-	  bmi088_init_ok = 1;
+  uint8_t bmi088_init_try_count = 1;
+
+  while (bmi088_init_ok == 0 && bmi088_init_try_count <= 3) {
+	  if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
+		  bmi088_init_ok = 1;
+		  break;
+	  } else {
+		  bmi088_init_try_count++;
+		  delay(500);
+	  }
   }
 
   ganesha_II_packet packet;

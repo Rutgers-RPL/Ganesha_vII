@@ -23,6 +23,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "bmi08_defs.h"
+#include "bmi088.h"
 #include "CD-PA1616S.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,6 +125,23 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	//Prescaler = 59999, Counter = 9999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 180s
 }
 
+uint8_t bmi088_init_ok = 0;
+struct BMI088 bmi088;
+struct bmi08_sensor_data bmi088_accel_data;
+struct bmi08_sensor_data bmi088_gyro_data;
+
+void HAL_GPIO_EXTI_Callback(uint16_t pin) {
+	if (pin == BMI088_GYRO_INT_PIN) {
+		if (bmi088_init_ok == 0) return;
+		bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
+	} else if (pin == BMI088_ACCEL_INT_PIN) {
+		if (bmi088_init_ok == 0) return;
+		bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
+	}
+
+	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -170,11 +189,21 @@ int main(void)
 
   GPS_Init();
 
+  uint8_t bmi088_init_try_count = 1;
+
+  while (bmi088_init_ok == 0 && bmi088_init_try_count <= 3) {
+	  if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
+		  bmi088_init_ok = 1;
+		  break;
+	  } else {
+		  bmi088_init_try_count++;
+		  delay(500);
+	  }
+  }
 
   ganesha_II_packet packet;
   short magic = 0xBEEF;
   packet.magic = magic;
-
 
   packet.status = 0;
       packet.time_us =0;
@@ -229,8 +258,13 @@ int main(void)
 	  packet.gpsFixType = gps_packet.gpsFixType;
 	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
+	  packet.acceleration_x_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.x);
+	  packet.acceleration_y_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.y);
+	  packet.acceleration_z_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.z);
 
-
+	  packet.angular_velocity_x_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.x);
+	  packet.angular_velocity_y_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.y);
+	  packet.angular_velocity_z_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.z);
 
 	           //Transmit or otherwise use the data
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
@@ -248,7 +282,7 @@ int main(void)
 	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
 
-//	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 //	      HAL_Delay(50);
 
 
@@ -439,11 +473,11 @@ static void MX_SPI2_Init(void)
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -753,7 +787,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : GYR_INT_Pin ACC_INT_Pin */
   GPIO_InitStruct.Pin = GYR_INT_Pin|ACC_INT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -801,6 +835,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PYRO1_SENSE_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(GYR_INT_EXTI_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(GYR_INT_EXTI_IRQn);
+
+  HAL_NVIC_SetPriority(ACC_INT_EXTI_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(ACC_INT_EXTI_IRQn);
 
   /*AnalogSwitch Config */
   HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA1, SYSCFG_SWITCH_PA1_CLOSE);

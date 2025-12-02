@@ -61,10 +61,12 @@ void Error_Handler(void);
 #define FLASH_CS_GPIO_Port GPIOE
 #define GYR_INT_Pin GPIO_PIN_0
 #define GYR_INT_GPIO_Port GPIOA
+#define GYR_INT_EXTI_IRQn EXTI0_IRQn
 #define GYR_CS_Pin GPIO_PIN_1
 #define GYR_CS_GPIO_Port GPIOA
 #define ACC_INT_Pin GPIO_PIN_2
 #define ACC_INT_GPIO_Port GPIOA
+#define ACC_INT_EXTI_IRQn EXTI2_IRQn
 #define ACC_CS_Pin GPIO_PIN_3
 #define ACC_CS_GPIO_Port GPIOA
 #define MAG_CS_Pin GPIO_PIN_4

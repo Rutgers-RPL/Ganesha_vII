@@ -42,6 +42,5 @@ void bmi088_delay(uint32_t period, void *intf_ptr);
 int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle);
 int8_t bmi088_update_accel_data(struct BMI088* bmi, struct bmi08_sensor_data* accel_data);
 int8_t bmi088_update_gyro_data(struct BMI088* bmi, struct bmi08_sensor_data* gyro_data);
-void bmi088_new_data_int_callback(struct BMI088* bmi, struct bmi08_sensor_data* accel_data, struct bmi08_sensor_data* gyro_data);
 
 #endif /* INC_BMI088_H_ */

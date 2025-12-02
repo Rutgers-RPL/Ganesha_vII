@@ -192,8 +192,3 @@ int8_t bmi088_update_accel_data(struct BMI088* bmi, struct bmi08_sensor_data* ac
 int8_t bmi088_update_gyro_data(struct BMI088* bmi, struct bmi08_sensor_data* gyro_data) {
 	return bmi08g_get_data(gyro_data, &bmi->dev);
 };
-
-void bmi088_new_data_int_callback(struct BMI088* bmi, struct bmi08_sensor_data* accel_data, struct bmi08_sensor_data* gyro_data) {
-	// TODO: write stuff to handle the EXTI callback
-	// int channel 1 on accel and int channel 3 on gyro used for new data int
-}

@@ -88,6 +88,13 @@ static void MX_SPI2_Init(void);
 /* USER CODE BEGIN 0 */
 uint8_t camera_buffer[4];
 uint8_t camera_fired = 0;
+ganesha_II_packet packet;
+
+struct BMP581 bmp581;
+int8_t bmp_init_value = bmp581_init(&bmp581, &hi2c2);
+
+struct bmp5_sensor_data bmp_data;
+
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == UART5) {
@@ -99,6 +106,25 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	    __HAL_UART_CLEAR_OREFLAG(&huart5);
 		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 	}
+}
+
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  /* Prevent unused argument(s) compilation warning */
+//UNUSED(GPIO_Pin);
+  if(GPIO_Pin == GPIO_Pin_15)
+  {
+	  bmp581_get_data(&bmp581, &bmp_data);
+
+	  packet.barometer_hMSL_m = bmp_data.pressure;
+	  packet.temperature_c = bmp_data.temperature;
+  }
+
+
+  /* NOTE: This function Should not be modified, when the callback is needed,
+           the HAL_GPIO_EXTI_Callback could be implemented in the user file
+   */
 }
 
 /* USER CODE END 0 */
@@ -145,12 +171,7 @@ int main(void)
 
   GPS_Init();
 
-  struct BMP581 bmp581;
-  int8_t bmp_init_value = bmp581_init(&bmp581, &hi2c2);
 
-  struct bmp5_sensor_data bmp_data;
-
-  ganesha_II_packet packet;
   short magic = 0xBEEF;
   packet.magic = magic;
 
@@ -707,11 +728,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BMP_INT_Pin */
-  GPIO_InitStruct.Pin = BMP_INT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  /*Configure GPIO pin : Btn_Interrupt_Pin */
+  GPIO_InitStruct.Pin = Btn_Interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BMP_INT_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(Btn_Interrupt_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BAT_VOLT_Pin CAM_SENSE_Pin PYRO0_SENSE_Pin */
   GPIO_InitStruct.Pin = BAT_VOLT_Pin|CAM_SENSE_Pin|PYRO0_SENSE_Pin;
@@ -731,6 +752,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PYRO1_SENSE_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(Btn_Interrupt_EXTI_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(Btn_Interrupt_EXTI_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

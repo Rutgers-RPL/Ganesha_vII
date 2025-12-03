@@ -71,8 +71,9 @@ void Error_Handler(void);
 #define MAG_CS_GPIO_Port GPIOA
 #define MAG_INT_Pin GPIO_PIN_4
 #define MAG_INT_GPIO_Port GPIOC
-#define BMP_INT_Pin GPIO_PIN_15
-#define BMP_INT_GPIO_Port GPIOE
+#define Btn_Interrupt_Pin GPIO_PIN_15
+#define Btn_Interrupt_GPIO_Port GPIOE
+#define Btn_Interrupt_EXTI_IRQn EXTI15_10_IRQn
 #define BAT_VOLT_Pin GPIO_PIN_3
 #define BAT_VOLT_GPIO_Port GPIOD
 #define CAM_FIRE_Pin GPIO_PIN_4

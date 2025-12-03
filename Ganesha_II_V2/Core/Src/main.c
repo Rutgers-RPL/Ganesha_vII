@@ -52,6 +52,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+CRC_HandleTypeDef hcrc;
+
 I2C_HandleTypeDef hi2c2;
 
 SPI_HandleTypeDef hspi1;
@@ -83,6 +85,7 @@ static void MX_UART5_Init(void);
 static void MX_UART8_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_SPI2_Init(void);
+static void MX_CRC_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -108,6 +111,14 @@ if(huart->Instance == UART5){
 }
 }
 
+uint32_t calculate_checksum(const uint8_t *data, size_t length) {
+    size_t padded_length = (length + 3) & ~0x03; //hcrc is word-based, so we need to pad to a multiple of 4 bytes
+
+    uint8_t pad_buffer[padded_length];
+    memset(pad_buffer, 0, padded_length);
+    memcpy(pad_buffer, data, length);
+
+    return HAL_CRC_Calculate(&hcrc, (uint32_t *)pad_buffer, padded_length / 4);
 
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
@@ -184,6 +195,7 @@ int main(void)
   MX_UART8_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_SPI2_Init();
+  MX_CRC_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
@@ -234,6 +246,16 @@ int main(void)
       packet.z = 0.0f;
       packet.checksum = 0;
 
+
+      __HAL_UART_CLEAR_OREFLAG(&huart5);
+      HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+
+
+
+
+
+
+
       __HAL_UART_CLEAR_OREFLAG(&huart8);
       HAL_UART_Receive_IT(&huart8, camera_buffer, 4)
   /* USER CODE END 2 */
@@ -265,6 +287,8 @@ int main(void)
 	  packet.angular_velocity_x_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.x);
 	  packet.angular_velocity_y_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.y);
 	  packet.angular_velocity_z_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.z);
+
+	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
 	           //Transmit or otherwise use the data
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
@@ -356,6 +380,37 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
+  hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
+  hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
+  hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
+  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
 }
 
 /**
@@ -884,3 +939,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+

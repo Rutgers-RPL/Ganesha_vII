@@ -9,6 +9,7 @@
 struct BMP581 {
 	struct bmp5_dev device;
 	struct bmp5_osr_odr_press_config odr_config;
+	struct bmp5_int_source_select int_config;
 	I2C_HandleTypeDef *hi2c;
 	float altitude;
 };

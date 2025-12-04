@@ -101,6 +101,8 @@ ganesha_II_packet packet;
 struct BMP581 bmp581;
 int8_t bmp_init_value = bmp581_init(&bmp581, &hi2c2);
 
+struct bmp5_sensor_data bmp_data;
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 if(huart->Instance == UART5){
 	if(memcmp(camera_buffer, "FIRE", 4) == 0){
@@ -115,24 +117,6 @@ if(huart->Instance == UART5){
 	}
 }
 
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  /* Prevent unused argument(s) compilation warning */
-//UNUSED(GPIO_Pin);
-  if(GPIO_Pin == GPIO_Pin_15)
-  {
-	  bmp581_get_data(&bmp581, &bmp_data);
-
-	  packet.barometer_hMSL_m = bmp_data.pressure;
-	  packet.temperature_c = bmp_data.temperature;
-  }
-
-
-  /* NOTE: This function Should not be modified, when the callback is needed,
-           the HAL_GPIO_EXTI_Callback could be implemented in the user file
-   */
-}
 
 uint32_t calculate_checksum(const uint8_t *data, size_t length) {
     size_t padded_length = (length + 3) & ~0x03; //hcrc is word-based, so we need to pad to a multiple of 4 bytes
@@ -171,7 +155,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	} else if (pin == BMI088_ACCEL_INT_PIN) {
 		if (bmi088_init_ok == 0) return;
 		bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
-	}
+	} else if (pin == GPIO_Pin_15) {
+    bmp581_get_data(&bmp581, &bmp_data);
+
+    packet.barometer_hMSL_m = bmp_data.pressure;
+    packet.temperature_c = bmp_data.temperature;
+  }
 
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }

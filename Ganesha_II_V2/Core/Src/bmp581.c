@@ -38,6 +38,11 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 	bmp581->device.delay_us = delay;
 	bmp581->odr_config.odr = BMP5_ODR_240_HZ;
 	bmp581->odr_config.press_en = BMP5_ENABLE;
+	bmp581->int_config.drdy_en = BMP5_ENABLE;
+	bmp581->int_config.fifo_full_en = BMP5_DISABLE;
+	bmp581->int_config.fifo_thres_en = BMP5_DISABLE;
+	bmp581->int_config.oor_press_en = BMP5_DISABLE;
+
 
 	bmp5_soft_reset(&(bmp581->device));
 
@@ -53,6 +58,10 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 		return result;
 	}
 
+	result = bmp5_set_int_source_select(&(bmp581->int_config), &(bmp581->device));
+	if (result != BMP5_OK) {
+		return result;
+	}
 	// Enable interrupt handler
 	result = bmp5_configure_interrupt(BMP5_PULSED, BMP5_ACTIVE_HIGH, BMP5_INTR_PUSH_PULL, BMP5_INTR_ENABLE, &(bmp581->device));
 	if (result != BMP5_OK) {

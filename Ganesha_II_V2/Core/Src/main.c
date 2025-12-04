@@ -155,7 +155,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	} else if (pin == BMI088_ACCEL_INT_PIN) {
 		if (bmi088_init_ok == 0) return;
 		bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
-	} else if (pin == GPIO_Pin_15) {
+	} else if (pin == Btn_Interrupt_Pin) {
     bmp581_get_data(&bmp581, &bmp_data);
 
     packet.barometer_hMSL_m = bmp_data.pressure;

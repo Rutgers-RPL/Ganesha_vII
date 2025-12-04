@@ -53,8 +53,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-CRC_HandleTypeDef hcrc;
-
 I2C_HandleTypeDef hi2c2;
 
 SPI_HandleTypeDef hspi1;
@@ -86,7 +84,6 @@ static void MX_UART5_Init(void);
 static void MX_UART8_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_SPI2_Init(void);
-static void MX_CRC_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -99,9 +96,8 @@ uint8_t camera_fired = 0;
 ganesha_II_packet packet;
 
 struct BMP581 bmp581;
-int8_t bmp_init_value = bmp581_init(&bmp581, &hi2c2);
-
 struct bmp5_sensor_data bmp_data;
+uint8_t bmp581_init_ok = 0;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 if(huart->Instance == UART5){
@@ -118,20 +114,20 @@ if(huart->Instance == UART5){
 }
 
 
-uint32_t calculate_checksum(const uint8_t *data, size_t length) {
-    size_t padded_length = (length + 3) & ~0x03; //hcrc is word-based, so we need to pad to a multiple of 4 bytes
-
-    uint8_t pad_buffer[padded_length];
-    memset(pad_buffer, 0, padded_length);
-    memcpy(pad_buffer, data, length);
-
-    return HAL_CRC_Calculate(&hcrc, (uint32_t *)pad_buffer, padded_length / 4);
-}
+//uint32_t calculate_checksum(const uint8_t *data, size_t length) {
+//    size_t padded_length = (length + 3) & ~0x03; //hcrc is word-based, so we need to pad to a multiple of 4 bytes
+//
+//    uint8_t pad_buffer[padded_length];
+//    memset(pad_buffer, 0, padded_length);
+//    memcpy(pad_buffer, data, length);
+//
+//    return HAL_CRC_Calculate(&hcrc, (uint32_t *)pad_buffer, padded_length / 4);
+//}
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   if (camera_fired == 1){
     //  Timer Stopped
-    HAL_TIM_Base_STOP_IT(&htim1);
+    HAL_TIM_Base_Stop_IT(&htim1);
     // Camera Stopped
     HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
     camera_fired ^= 1;
@@ -156,11 +152,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 		if (bmi088_init_ok == 0) return;
 		bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
 	} else if (pin == Btn_Interrupt_Pin) {
-    bmp581_get_data(&bmp581, &bmp_data);
-
-    packet.barometer_hMSL_m = bmp_data.pressure;
-    packet.temperature_c = bmp_data.temperature;
-  }
+		bmp581_get_data(&bmp581, &bmp_data);
+    }
 
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }
@@ -207,7 +200,6 @@ int main(void)
   MX_UART8_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_SPI2_Init();
-  MX_CRC_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
@@ -221,8 +213,12 @@ int main(void)
 		  break;
 	  } else {
 		  bmi088_init_try_count++;
-		  delay(500);
+		  HAL_Delay(500);
 	  }
+  }
+
+  if (bmp581_init(&bmp581, &hi2c2) == BMP5_OK) {
+	  bmp581_init_ok = 1;
   }
 
   short magic = 0xBEEF;
@@ -268,7 +264,7 @@ int main(void)
 
 
       __HAL_UART_CLEAR_OREFLAG(&huart8);
-      HAL_UART_Receive_IT(&huart8, camera_buffer, 4)
+      HAL_UART_Receive_IT(&huart8, camera_buffer, 4);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -299,7 +295,10 @@ int main(void)
 	  packet.angular_velocity_y_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.y);
 	  packet.angular_velocity_z_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.z);
 
-	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
+	  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
+	  packet.temperature_c = (float)(bmp_data.temperature);
+
+//	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
 	           //Transmit or otherwise use the data
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
@@ -393,37 +392,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief CRC Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_CRC_Init(void)
-{
-
-  /* USER CODE BEGIN CRC_Init 0 */
-
-  /* USER CODE END CRC_Init 0 */
-
-  /* USER CODE BEGIN CRC_Init 1 */
-
-  /* USER CODE END CRC_Init 1 */
-  hcrc.Instance = CRC;
-  hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
-  hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
-  hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
-  hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
-  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
-  if (HAL_CRC_Init(&hcrc) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN CRC_Init 2 */
-
-  /* USER CODE END CRC_Init 2 */
-
 }
 
 /**
@@ -904,20 +872,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PYRO1_SENSE_GPIO_Port, &GPIO_InitStruct);
 
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(Btn_Interrupt_EXTI_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(Btn_Interrupt_EXTI_IRQn);
+  /*AnalogSwitch Config */
+  HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA1, SYSCFG_SWITCH_PA1_CLOSE);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(GYR_INT_EXTI_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(GYR_INT_EXTI_IRQn);
 
   HAL_NVIC_SetPriority(ACC_INT_EXTI_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(ACC_INT_EXTI_IRQn);
 
-  /*AnalogSwitch Config */
-  HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA1, SYSCFG_SWITCH_PA1_CLOSE);
+  HAL_NVIC_SetPriority(Btn_Interrupt_EXTI_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(Btn_Interrupt_EXTI_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   /* USER CODE END MX_GPIO_Init_2 */
@@ -957,4 +923,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-

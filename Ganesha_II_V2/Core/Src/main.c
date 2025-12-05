@@ -108,9 +108,11 @@ if(huart->Instance == UART5){
 			camera_fired ^= 1;
 
 		}
-	    __HAL_UART_CLEAR_OREFLAG(&huart5);
-		HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+	   // __HAL_UART_CLEAR_OREFLAG(&huart5);
+		//HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 	}
+	__HAL_UART_CLEAR_OREFLAG(&huart5);
+	HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 }
 
 
@@ -297,6 +299,12 @@ int main(void)
 	  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
 	  packet.temperature_c = (float)(bmp_data.temperature);
 
+	  if(camera_fired == 1){
+		  packet.status = 1;
+	  }else{
+		  packet.status = 0;
+	  }
+
 //	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
 	           //Transmit or otherwise use the data
@@ -316,6 +324,7 @@ int main(void)
 	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
 
 	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	      bmp581_get_data(&bmp581, &bmp_data);
 //	      HAL_Delay(50);
 
 
@@ -604,9 +613,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 60000 - 1;
+  htim1.Init.Prescaler = 18310-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 10000 - 1;
+  htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV2;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -675,6 +684,9 @@ static void MX_UART5_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN UART5_Init 2 */
+  HAL_NVIC_SetPriority(UART5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(UART5_IRQn);
+
 
   /* USER CODE END UART5_Init 2 */
 
@@ -922,5 +934,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-

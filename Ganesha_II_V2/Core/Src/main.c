@@ -322,7 +322,7 @@ int main(void)
 
 
 
-	  bmp581_get_data(&bmp581, &bmp_data);
+
 	  HAL_Delay(50);
 
 //	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
@@ -922,4 +922,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
 

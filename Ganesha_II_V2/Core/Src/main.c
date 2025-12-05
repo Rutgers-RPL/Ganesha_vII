@@ -263,8 +263,7 @@ int main(void)
 
 
 
-      __HAL_UART_CLEAR_OREFLAG(&huart8);
-      HAL_UART_Receive_IT(&huart8, camera_buffer, 4);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -923,3 +922,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+

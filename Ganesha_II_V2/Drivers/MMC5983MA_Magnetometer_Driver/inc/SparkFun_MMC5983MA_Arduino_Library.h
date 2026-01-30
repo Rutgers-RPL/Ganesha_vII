@@ -17,7 +17,7 @@
 
 // #include <Arduino.h>
 #include <Wire.h>
-#include <SPI.h>
+#include <SPI.h>C315
 #include "SparkFun_MMC5983MA_IO.h"
 #include "SparkFun_MMC5983MA_Arduino_Library_Constants.h"
 

@@ -15,7 +15,7 @@
 #ifndef _SPARKFUN_MMC5983MA_CONSTANTS_
 #define _SPARKFUN_MMC5983MA_CONSTANTS_
 
-// #include <Arduino.h>
+#include <Arduino.h>
 
 // Macro for invoking the callback if the function pointer is valid
 #define SAFE_CALLBACK(cb, code) \

@@ -1,35 +1,30 @@
 /*
-  This is a library written for the MMC5983MA High Performance Magnetometer.
-  SparkFun sells these at its website:
-  https://www.sparkfun.com/products/19034
-
-  Do you like this library? Help support open source hardware. Buy a board!
-
-  Written by Ricardo Ramos  @ SparkFun Electronics, February 2nd, 2022.
-  This file declares all functions used in the MMC5983MA High Performance Magnetometer Arduino Library I2C/SPI IO layer.
-
-  SparkFun code, firmware, and software is released under the MIT License(http://opensource.org/licenses/MIT).
-  See LICENSE.md for more information.
+  This is a modified library for the MMC5983MA High Performance Magnetometer, adapted for STM32 microcontrollers using the HAL library.
+  The original library was written by Ricardo Ramos @ SparkFun Electronics, February 2nd, 2022.
+ This file declares all functions used in the MMC5983MA High Performance Magnetometer STM32 Library I2C/SPI IO layer.
 */
 
 #ifndef _SPARKFUN_MMC5983MA_IO_
 #define _SPARKFUN_MMC5983MA_IO_
 
-//#include <Arduino.h>
-//#include <Wire.h>
-//#include <SPI.h>
+#include "main.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 
 class SFE_MMC5983MA_IO
 {
 private:
-  SPIClass *_spiPort = nullptr;
-  uint8_t _csPin = 0;
-  SPISettings _mmcSpiSettings;
+  SPI_HandleTypeDef *_hspi = nullptr;
+  GPIO_TypeDef *_csPort = nullptr;
+  uint16_t _csPin = 0;
 
-  TwoWire *_i2cPort = nullptr;
+  I2C_HandleTypeDef *_hi2c = nullptr;
   uint8_t _address = 0;
   bool useSPI = false;
+
+  // HAL timeout value in milliseconds
+  static const uint32_t HAL_TIMEOUT_MS = 100;
 
 public:
   // Default empty constructor.
@@ -38,17 +33,11 @@ public:
   // Default empty destructor
   ~SFE_MMC5983MA_IO() = default;
 
-  // Builds default SPI settings if none are provided.
-  void initSPISettings();
-
   // Configures and starts the I2C I/O layer.
-  bool begin(TwoWire &wirePort);
+  bool begin(I2C_HandleTypeDef *hi2c);
 
   // Configures and starts the SPI I/O layer.
-  bool begin(const uint8_t csPin, SPIClass &spiPort = SPI);
-
-  // Configures the SPI I/O layer with the given chip select and SPI settings provided by the user.
-  bool begin(const uint8_t csPin, SPISettings userSettings, SPIClass &spiPort = SPI);
+  bool begin(GPIO_TypeDef *csPort, uint16_t csPin, SPI_HandleTypeDef *hspi);
 
   // Returns true if we get the correct product ID from the device.
   bool isConnected();

@@ -1,21 +1,15 @@
 /*
-  This is a library written for the MMC5983MA High Performance Magnetometer.
-  SparkFun sells these at its website:
-  https://www.sparkfun.com/products/19034
-
-  Do you like this library? Help support open source hardware. Buy a board!
-
-  Written by Ricardo Ramos  @ SparkFun Electronics, February 2nd, 2022.
-This file declares all constants used in the MMC5983MA High Performance Magnetometer Arduino Library.
-
-  SparkFun code, firmware, and software is released under the MIT License(http://opensource.org/licenses/MIT).
-  See LICENSE.md for more information.
+  This is a modified library for the MMC5983MA High Performance Magnetometer, adapted for STM32 microcontrollers using the HAL library.
+  The original library was written by Ricardo Ramos @ SparkFun Electronics, February 2nd, 2022.
+  This file declares all constants used in the MMC5983MA High Performance Magnetometer Arduino Library.
 */
 
 #ifndef _SPARKFUN_MMC5983MA_CONSTANTS_
 #define _SPARKFUN_MMC5983MA_CONSTANTS_
 
-#include <Arduino.h>
+// Standard C/C++ headers
+#include <stdint.h>
+#include <stdbool.h>
 
 // Macro for invoking the callback if the function pointer is valid
 #define SAFE_CALLBACK(cb, code) \

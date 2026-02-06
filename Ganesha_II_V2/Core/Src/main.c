@@ -264,8 +264,33 @@ int main(void)
       HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 
 
+      // Initialize the magnetometer with SPI
+         // CS pin is PA4 (GPIOA, GPIO_PIN_4)
+         if (magnetometer.begin(GPIOA, GPIO_PIN_4, &hspi1))
+         {
+             printf("MMC5983MA connected via SPI!\r\n");
+         }
+         else
+         {
+             printf("MMC5983MA initialization failed!\r\n");
+             while(1);
+         }
 
+         magnetometer.softReset();
+         magnetometer.setFilterBandwidth(400);  // 400 Hz
 
+         while (1)
+         {
+             uint32_t x, y, z;
+
+             if (magnetometer.getMeasurementXYZ(&x, &y, &z))
+             {
+                 printf("X: %lu, Y: %lu, Z: %lu\r\n", x, y, z);
+             }
+
+             HAL_Delay(50);
+         }
+     }
 
 
 
@@ -504,7 +529,7 @@ static void MX_SPI1_Init(void)
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
@@ -917,6 +942,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PYRO1_SENSE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*AnalogSwitch Config */
   HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA1, SYSCFG_SWITCH_PA1_CLOSE);

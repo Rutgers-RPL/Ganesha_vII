@@ -292,13 +292,13 @@ int main(void)
 	  packet.gpsFixType = gps_packet.gpsFixType;
 	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
-	  packet.acceleration_x_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.x);
-	  packet.acceleration_y_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.y);
-	  packet.acceleration_z_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.z);
+	  packet.acceleration_x_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.x);
+	  packet.acceleration_y_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.y);
+	  packet.acceleration_z_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.z);
 
-	  packet.angular_velocity_x_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.x);
-	  packet.angular_velocity_y_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.y);
-	  packet.angular_velocity_z_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.z);
+	  packet.angular_velocity_x_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.x);
+	  packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
+	  packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
 
 	  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
 	  packet.temperature_c = (float)(bmp_data.temperature);

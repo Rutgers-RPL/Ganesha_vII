@@ -192,3 +192,24 @@ int8_t bmi088_update_accel_data(struct BMI088* bmi, struct bmi08_sensor_data* ac
 int8_t bmi088_update_gyro_data(struct BMI088* bmi, struct bmi08_sensor_data* gyro_data) {
 	return bmi08g_get_data(gyro_data, &bmi->dev);
 };
+
+float bmi088_convert_accel_axis_data(struct BMI088* bmi, int16_t axis_data) {
+	return (float)((axis_data / 32768) * 1000 * pow(2, bmi->dev.accel_cfg.range + 1) * 1.5) * 0.00981;
+}
+
+float bmi088_convert_gyro_axis_data(struct BMI088* bmi, int16_t axis_data) {
+	switch (bmi->dev.gyro_cfg.range) {
+		case BMI08_GYRO_RANGE_2000_DPS:
+			return CONVERT_GYRO_RAW_RANGE(axis_data, 2000);
+		case BMI08_GYRO_RANGE_1000_DPS:
+			return CONVERT_GYRO_RAW_RANGE(axis_data, 1000);
+		case BMI08_GYRO_RANGE_500_DPS:
+			return CONVERT_GYRO_RAW_RANGE(axis_data, 500);
+		case BMI08_GYRO_RANGE_250_DPS:
+			return CONVERT_GYRO_RAW_RANGE(axis_data, 250);
+		case BMI08_GYRO_RANGE_125_DPS:
+			return CONVERT_GYRO_RAW_RANGE(axis_data, 125);
+		default:
+			return 0.0f;
+	}
+}

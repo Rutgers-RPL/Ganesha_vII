@@ -16,8 +16,7 @@
 #include <stdint.h>
 #include <math.h>
 
-#define MILLIG_TO_MSS_FLOAT(mg) ((float)(mg) * 0.00981)
-#define DEG_TO_RAD_FLOAT(deg) ((float)(deg) * (M_PI/180))
+#define CONVERT_GYRO_RAW_RANGE(raw, range) ((((float)raw * (float)range) / 32768.0f) * (M_PI / 180.0f))
 
 #define BMI088_GYRO_INT_PIN GPIO_PIN_0
 #define BMI088_GYRO_CS_PIN GPIO_PIN_1
@@ -42,5 +41,7 @@ void bmi088_delay(uint32_t period, void *intf_ptr);
 int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle);
 int8_t bmi088_update_accel_data(struct BMI088* bmi, struct bmi08_sensor_data* accel_data);
 int8_t bmi088_update_gyro_data(struct BMI088* bmi, struct bmi08_sensor_data* gyro_data);
+float bmi088_convert_accel_axis_data(struct BMI088* bmi, int16_t axis_data);
+float bmi088_convert_gyro_axis_data(struct BMI088* bmi, int16_t axis_data);
 
 #endif /* INC_BMI088_H_ */

@@ -194,7 +194,7 @@ int8_t bmi088_update_gyro_data(struct BMI088* bmi, struct bmi08_sensor_data* gyr
 };
 
 float bmi088_convert_accel_axis_data(struct BMI088* bmi, int16_t axis_data) {
-	return (float)((axis_data / 32768) * 1000 * pow(2, bmi->dev.accel_cfg.range + 1) * 1.5) * 0.00981;
+	return ((float)axis_data / 32768.0f * 1000 * pow(2, bmi->dev.accel_cfg.range + 1) * 1.5) * 0.00981;
 }
 
 float bmi088_convert_gyro_axis_data(struct BMI088* bmi, int16_t axis_data) {

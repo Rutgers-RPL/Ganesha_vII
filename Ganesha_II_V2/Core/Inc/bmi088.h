@@ -16,8 +16,7 @@
 #include <stdint.h>
 #include <math.h>
 
-#define DEG_TO_RAD (M_PI / 180.0f)
-#define CONVERT_GYRO_RAW_RANGE(raw, range) ((((float)raw * (float)range) / 32768.0f) * DEG_TO_RAD)
+#define CONVERT_GYRO_RAW_RANGE(raw, range) ((((float)raw * (float)range) / 32768.0f) * (M_PI / 180.0f))
 
 #define BMI088_GYRO_INT_PIN GPIO_PIN_0
 #define BMI088_GYRO_CS_PIN GPIO_PIN_1

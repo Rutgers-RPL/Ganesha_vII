@@ -336,9 +336,7 @@ int main(void)
 
 
 
-	  HAL_Delay(50);
-
-//	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 //	  HAL_UART_Receive(&huart8, (uint8_t*)seq,256,HAL_MAX_DELAY);
 //	  HAL_Delay(500);
 

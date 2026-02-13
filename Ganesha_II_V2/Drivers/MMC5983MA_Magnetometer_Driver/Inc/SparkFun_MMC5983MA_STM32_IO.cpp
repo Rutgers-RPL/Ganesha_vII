@@ -12,9 +12,8 @@
   SparkFun code, firmware, and software is released under the MIT License(http://opensource.org/licenses/MIT).
   See LICENSE.md for more information.
 */
-
-#include "SparkFun_MMC5983MA_STM32_IO.h"
 #include "SparkFun_MMC5983MA_STM32_Library_Constants.h"
+#include "SparkFun_MMC5983MA_STM32_IO.h"
 
 // Read operations must have the most significant bit set for SPI
 #define READ_REG(x) (0x80 | x)

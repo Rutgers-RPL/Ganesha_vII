@@ -263,34 +263,20 @@ int main(void)
       __HAL_UART_CLEAR_OREFLAG(&huart5);
       HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 
-
+      // POTENTIAL CODE FOR TESTING THE MAGNETOMETER BY IAN QUAYE
       // Initialize the magnetometer with SPI
          // CS pin is PA4 (GPIOA, GPIO_PIN_4)
-         if (magnetometer.begin(GPIOA, GPIO_PIN_4, &hspi1))
-         {
-             printf("MMC5983MA connected via SPI!\r\n");
-         }
-         else
-         {
-             printf("MMC5983MA initialization failed!\r\n");
-             while(1);
-         }
-
-         magnetometer.softReset();
+      magnetometer.begin(GPIOA, GPIO_PIN_4, &hspi1);
+      magnetometer.softReset();
          magnetometer.setFilterBandwidth(400);  // 400 Hz
-
          while (1)
          {
-             uint32_t x, y, z;
+             uint32_t MagX, MagY, MagZ;
 
-             if (magnetometer.getMeasurementXYZ(&x, &y, &z))
-             {
-                 printf("X: %lu, Y: %lu, Z: %lu\r\n", x, y, z);
-             }
+             magnetometer.getMeasurementXYZ(&MagX, &MagY, &MagZ);
 
              HAL_Delay(50);
          }
-     }
 
 
 

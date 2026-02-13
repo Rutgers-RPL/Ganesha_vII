@@ -13,8 +13,8 @@
   See LICENSE.md for more information.
 */
 
-#include "SparkFun_MMC5983MA_STM32_Library.h"
 #include "SparkFun_MMC5983MA_STM32_Library_Constants.h"
+#include "SparkFun_MMC5983MA_STM32_Library.h"
 
 bool SFE_MMC5983MA::setShadowBit(uint8_t registerAddress, const uint8_t bitMask, bool doWrite)
 {

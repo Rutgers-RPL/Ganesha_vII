@@ -1,205 +1,210 @@
 /*
   This is a modified library for the MMC5983MA High Performance Magnetometer, adapted for STM32 microcontrollers using the HAL library.
   The original library was written by Ricardo Ramos @ SparkFun Electronics, February 2nd, 2022.
- This file declares all functions used in the MMC5983MA High Performance Magnetometer STM32 Library.
+  This file declares all functions used in the MMC5983MA High Performance Magnetometer STM32 Library.
 */
 
-#ifndef _SPARKFUN_MMC5983MA_
-#define _SPARKFUN_MMC5983MA_
+#ifndef SPARKFUN_MMC5983MA_H
+#define SPARKFUN_MMC5983MA_H
 
 #include "SparkFun_MMC5983MA_STM32_IO.h"
 #include "SparkFun_MMC5983MA_STM32_Library_Constants.h"
 
-class SFE_MMC5983MA
-{
-private:
-  // I2C communication object instance.
-  SFE_MMC5983MA_IO mmc_io;
-  // Error callback function pointer.
-  // Function must accept a SF_MMC5983MA_ERROR as errorCode.
-  void (*errorCallback)(SF_MMC5983MA_ERROR errorCode) = nullptr;
+/* Shadow memory for write-only registers - default reset values are 0x0 */
+typedef struct {
+    uint8_t internalControl0;
+    uint8_t internalControl1;
+    uint8_t internalControl2;
+    uint8_t internalControl3;
+} MMC5983MA_MemoryShadow;
 
-  // Since some registers are write-only in MMC5983MA all operations
-  // are done in shadow memory locations. Default reset values are
-  // set to the shadow memory locations upon initialization and after
-  // any bit set in the shadow location the register is atomically written.
-  struct MemoryShadow
-  {
-    uint8_t internalControl0 = 0x0;
-    uint8_t internalControl1 = 0x0;
-    uint8_t internalControl2 = 0x0;
-    uint8_t internalControl3 = 0x0;
-  } memoryShadow;
+typedef struct {
+    /* I2C/SPI communication object */
+    SFE_MMC5983MA_IO mmc_io;
 
-  // Sets register bit(s) on memory shadows and then registers (if doWrite is true)
-  bool setShadowBit(uint8_t registerAddress, const uint8_t bitMask, bool doWrite = true);
+    /* Error callback: function must accept an SF_MMC5983MA_ERROR as errorCode */
+    void (*errorCallback)(SF_MMC5983MA_ERROR errorCode);
 
-  // Clears register bit(s) on memory shadows and then registers (if doWrite is true)
-  bool clearShadowBit(uint8_t registerAddress, const uint8_t bitMask, bool doWrite = true);
+    /* Shadow memory for write-only registers */
+    MMC5983MA_MemoryShadow memoryShadow;
+} SFE_MMC5983MA;
 
-  // Checks if a specific bit is set on a register memory shadow
-  bool isShadowBitSet(uint8_t registerAddress, const uint8_t bitMask);
+/* ── Lifecycle ───────────────────────────────────────────────────────────── */
 
-  // Return a timeout for getMeasurement based on BW1/0
-  uint16_t getTimeout();
+/* Initialise struct to safe defaults (replaces constructor) */
+void MMC5983MA_init(SFE_MMC5983MA *dev);
 
-public:
-  // Default constructor.
-  SFE_MMC5983MA() = default;
+/* Initializes MMC5983MA using I2C */
+bool MMC5983MA_beginI2C(SFE_MMC5983MA *dev, I2C_HandleTypeDef *hi2c);
 
-  // Default destructor.
-  ~SFE_MMC5983MA() = default;
+/* Initializes MMC5983MA using SPI */
+bool MMC5983MA_beginSPI(SFE_MMC5983MA *dev, GPIO_TypeDef *csPort, uint16_t csPin, SPI_HandleTypeDef *hspi);
 
-  // Sets the error callback function.
-  void setErrorCallback(void (*errorCallback)(SF_MMC5983MA_ERROR errorCode));
+/* Sets the error callback function */
+void MMC5983MA_setErrorCallback(SFE_MMC5983MA *dev, void (*errorCallback)(SF_MMC5983MA_ERROR errorCode));
 
-  // Convert errorCode to text
-  const char *errorCodeString(SF_MMC5983MA_ERROR errorCode);
-  
-  // Initializes MMC5983MA using I2C
-  bool begin(I2C_HandleTypeDef *hi2c);
+/* Convert errorCode to text */
+const char *MMC5983MA_errorCodeString(SF_MMC5983MA_ERROR errorCode);
 
-  // Initializes MMC5983MA using SPI
-  bool begin(GPIO_TypeDef *csPort, uint16_t csPin, SPI_HandleTypeDef *hspi);
+/* ── Connection ──────────────────────────────────────────────────────────── */
 
-  // Polls if MMC5983MA is connected and if chip ID matches MMC5983MA chip id.
-  bool isConnected();
+/* Polls if MMC5983MA is connected and if chip ID matches MMC5983MA chip id */
+bool MMC5983MA_isConnected(SFE_MMC5983MA *dev);
 
-  // Returns die temperature. Range is -75C to 125C.
-  int getTemperature();
+/* ── General ─────────────────────────────────────────────────────────────── */
 
-  // Soft resets the device.
-  bool softReset();
+/* Returns die temperature. Range is -75C to 125C */
+int  MMC5983MA_getTemperature(SFE_MMC5983MA *dev);
 
-  // Enables interrupt generation after measurement is completed.
-  // Must be re-enabled after each measurement.
-  bool enableInterrupt();
+/* Soft resets the device */
+bool MMC5983MA_softReset(SFE_MMC5983MA *dev);
 
-  // Disables interrupt generation.
-  bool disableInterrupt();
+/* ── Interrupt ───────────────────────────────────────────────────────────── */
 
-  // Checks if interrupt generation is enabled.
-  bool isInterruptEnabled();
+/* Enables interrupt generation after measurement is completed. Must be re-enabled after each measurement */
+bool MMC5983MA_enableInterrupt(SFE_MMC5983MA *dev);
 
-  // Enables 3 wire SPI interface
-  bool enable3WireSPI();
+/* Disables interrupt generation */
+bool MMC5983MA_disableInterrupt(SFE_MMC5983MA *dev);
 
-  // Disables SPI interface
-  bool disable3WireSPI();
+/* Checks if interrupt generation is enabled */
+bool MMC5983MA_isInterruptEnabled(SFE_MMC5983MA *dev);
 
-  // Checks if SPI is enabled
-  bool is3WireSPIEnabled();
+/* Clear the Meas_T_Done and/or Meas_M_Done interrupts */
+bool MMC5983MA_clearMeasDoneInterrupt(SFE_MMC5983MA *dev, uint8_t measMask);
 
-  // Performs SET operation
-  bool performSetOperation();
+/* ── SPI ─────────────────────────────────────────────────────────────────── */
 
-  // Performs RESET operation
-  bool performResetOperation();
+/* Enables 3-wire SPI interface */
+bool MMC5983MA_enable3WireSPI(SFE_MMC5983MA *dev);
 
-  // Enables automatic SET/RESET
-  bool enableAutomaticSetReset();
+/* Disables 3-wire SPI interface */
+bool MMC5983MA_disable3WireSPI(SFE_MMC5983MA *dev);
 
-  // Disables automatic SET/RESET
-  bool disableAutomaticSetReset();
+/* Checks if 3-wire SPI is enabled */
+bool MMC5983MA_is3WireSPIEnabled(SFE_MMC5983MA *dev);
 
-  // Checks if automatic SET/RESET is enabled
-  bool isAutomaticSetResetEnabled();
+/* ── SET / RESET ─────────────────────────────────────────────────────────── */
 
-  // Enables X channel output
-  bool enableXChannel();
+/* Performs SET operation */
+bool MMC5983MA_performSetOperation(SFE_MMC5983MA *dev);
 
-  // Disables X channel output
-  bool disableXChannel();
+/* Performs RESET operation */
+bool MMC5983MA_performResetOperation(SFE_MMC5983MA *dev);
 
-  // Checks if X channel output is enabled
-  // Note: this returns true when the X channel is inhibited.
-  // Strictly, it should be called isXChannelInhibited.
-  bool isXChannelEnabled();
+/* Enables automatic SET/RESET */
+bool MMC5983MA_enableAutomaticSetReset(SFE_MMC5983MA *dev);
 
-  // Enables Y and Z channels outputs
-  bool enableYZChannels();
+/* Disables automatic SET/RESET */
+bool MMC5983MA_disableAutomaticSetReset(SFE_MMC5983MA *dev);
 
-  // Disables Y and Z channels outputs
-  bool disableYZChannels();
+/* Checks if automatic SET/RESET is enabled */
+bool MMC5983MA_isAutomaticSetResetEnabled(SFE_MMC5983MA *dev);
 
-  // Checks if YZ channels outputs are enabled
-  // Note: this returns true when the Y and Z channels are inhibited.
-  // Strictly, it should be called areYZChannelsInhibited.
-  bool areYZChannelsEnabled();
+/* ── Channel control ─────────────────────────────────────────────────────── */
 
-  // Sets decimation filter bandwidth. Allowed values are 800, 400, 200 or 100. Defaults to 100 on invalid values.
-  bool setFilterBandwidth(uint16_t bandwidth);
+/* Enables X channel output */
+bool MMC5983MA_enableXChannel(SFE_MMC5983MA *dev);
 
-  // Gets current decimation filter bandwidth. Values are in Hz.
-  uint16_t getFilterBandwidth();
-  uint16_t getFilterBandwith() { return getFilterBandwidth(); } // Retained for backward compatibility
+/* Disables X channel output */
+bool MMC5983MA_disableXChannel(SFE_MMC5983MA *dev);
 
-  // Enables continuous mode. Continuous mode frequency must be greater than 0.
-  bool enableContinuousMode();
+/* Returns true when the X channel is inhibited */
+bool MMC5983MA_isXChannelEnabled(SFE_MMC5983MA *dev);
 
-  // Disables continuous mode.
-  bool disableContinuousMode();
+/* Enables Y and Z channel outputs */
+bool MMC5983MA_enableYZChannels(SFE_MMC5983MA *dev);
 
-  // Checks if continuous mode is enabled.
-  bool isContinuousModeEnabled();
+/* Disables Y and Z channel outputs */
+bool MMC5983MA_disableYZChannels(SFE_MMC5983MA *dev);
 
-  // Sets continuous mode frequency. Allowed values are 1000, 200, 100, 50, 20, 10, 1 and 0 (off). Defaults to 0 (off).
-  bool setContinuousModeFrequency(uint16_t frequency);
+/* Returns true when Y and Z channels are inhibited */
+bool MMC5983MA_areYZChannelsEnabled(SFE_MMC5983MA *dev);
 
-  // Gets continuous mode frequency.
-  uint16_t getContinuousModeFrequency();
+/* ── Filter bandwidth ────────────────────────────────────────────────────── */
 
-  // Enables periodic set
-  bool enablePeriodicSet();
+/* Sets decimation filter bandwidth. Allowed values: 800, 400, 200, 100. Defaults to 100 on invalid values */
+bool     MMC5983MA_setFilterBandwidth(SFE_MMC5983MA *dev, uint16_t bandwidth);
 
-  // Disables periodic set
-  bool disablePeriodicSet();
+/* Gets current decimation filter bandwidth in Hz */
+uint16_t MMC5983MA_getFilterBandwidth(SFE_MMC5983MA *dev);
 
-  // Checks if periodic set is enabled
-  bool isPeriodicSetEnabled();  
+/* ── Continuous mode ─────────────────────────────────────────────────────── */
 
-  // Sets how often the chip will perform an automatic set operation. Allowed values are 1, 25, 75, 100, 250, 500, 1000, 2000. Defaults to 1.
-  bool setPeriodicSetSamples(uint16_t numberOfSamples);
+/* Enables continuous mode. Frequency must be greater than 0 */
+bool     MMC5983MA_enableContinuousMode(SFE_MMC5983MA *dev);
 
-  // Gets how many times the chip is performing an automatic set operation.
-  uint16_t getPeriodicSetSamples();
+/* Disables continuous mode */
+bool     MMC5983MA_disableContinuousMode(SFE_MMC5983MA *dev);
 
-  // Apply extra current from positive side to negative side of the coil. This feature can be used to check whether the sensor has been saturated.
-  bool applyExtraCurrentPosToNeg();
+/* Checks if continuous mode is enabled */
+bool     MMC5983MA_isContinuousModeEnabled(SFE_MMC5983MA *dev);
 
-  // Remove extra current from positive side to negative side of the coil.
-  bool removeExtraCurrentPosToNeg();
+/* Sets continuous mode frequency. Allowed values: 1000, 200, 100, 50, 20, 10, 1, 0 (off) */
+bool     MMC5983MA_setContinuousModeFrequency(SFE_MMC5983MA *dev, uint16_t frequency);
 
-  // Checks if extra current is applied from positive to negative side of coil.
-  bool isExtraCurrentAppliedPosToNeg();
+/* Gets continuous mode frequency */
+uint16_t MMC5983MA_getContinuousModeFrequency(SFE_MMC5983MA *dev);
 
-  // Apply extra current from negative side to positive side of the coil. This feature can be used to check whether the sensor has been saturated.
-  bool applyExtracurrentNegToPos();
+/* ── Periodic set ────────────────────────────────────────────────────────── */
 
-  // Remove extra current from negative side to positive side of the coil.
-  bool removeExtracurrentNegToPos();
+/* Enables periodic set */
+bool     MMC5983MA_enablePeriodicSet(SFE_MMC5983MA *dev);
 
-  // Checks if extra current is applied from negative to positive side of coil.
-  bool isExtraCurrentAppliedNegToPos();
+/* Disables periodic set */
+bool     MMC5983MA_disablePeriodicSet(SFE_MMC5983MA *dev);
 
-  // Get X axis measurement
-  uint32_t getMeasurementX();
+/* Checks if periodic set is enabled */
+bool     MMC5983MA_isPeriodicSetEnabled(SFE_MMC5983MA *dev);
 
-  // Get Y axis measurement
-  uint32_t getMeasurementY();
+/* Sets how often the chip performs an automatic set operation. Allowed values: 1, 25, 75, 100, 250, 500, 1000, 2000 */
+bool     MMC5983MA_setPeriodicSetSamples(SFE_MMC5983MA *dev, uint16_t numberOfSamples);
 
-  // Get Z axis measurement
-  uint32_t getMeasurementZ();
+/* Gets how many times the chip performs an automatic set operation */
+uint16_t MMC5983MA_getPeriodicSetSamples(SFE_MMC5983MA *dev);
 
-  // Get X, Y and Z field strengths in a single measurement
-  bool getMeasurementXYZ(uint32_t *x, uint32_t *y, uint32_t *z);
+/* ── Extra coil current ──────────────────────────────────────────────────── */
 
-  // Read and return the X, Y and Z field strengths
-  bool readFieldsXYZ(uint32_t *x, uint32_t *y, uint32_t *z);
+/* Apply extra current from positive to negative side of coil */
+bool MMC5983MA_applyExtraCurrentPosToNeg(SFE_MMC5983MA *dev);
 
-  // Clear the Meas_T_Done and/or Meas_M_Done interrupts
-  // By default, clear both
-  bool clearMeasDoneInterrupt(uint8_t measMask = MEAS_T_DONE | MEAS_M_DONE);
-};
+/* Remove extra current from positive to negative side of coil */
+bool MMC5983MA_removeExtraCurrentPosToNeg(SFE_MMC5983MA *dev);
 
-#endif
+/* Checks if extra current is applied from positive to negative side of coil */
+bool MMC5983MA_isExtraCurrentAppliedPosToNeg(SFE_MMC5983MA *dev);
+
+/* Apply extra current from negative to positive side of coil */
+bool MMC5983MA_applyExtraCurrentNegToPos(SFE_MMC5983MA *dev);
+
+/* Remove extra current from negative to positive side of coil */
+bool MMC5983MA_removeExtraCurrentNegToPos(SFE_MMC5983MA *dev);
+
+/* Checks if extra current is applied from negative to positive side of coil */
+bool MMC5983MA_isExtraCurrentAppliedNegToPos(SFE_MMC5983MA *dev);
+
+/* ── Measurements ────────────────────────────────────────────────────────── */
+
+/* Get X axis measurement */
+uint32_t MMC5983MA_getMeasurementX(SFE_MMC5983MA *dev);
+
+/* Get Y axis measurement */
+uint32_t MMC5983MA_getMeasurementY(SFE_MMC5983MA *dev);
+
+/* Get Z axis measurement */
+uint32_t MMC5983MA_getMeasurementZ(SFE_MMC5983MA *dev);
+
+/* Get X, Y and Z field strengths in a single measurement */
+bool MMC5983MA_getMeasurementXYZ(SFE_MMC5983MA *dev, uint32_t *x, uint32_t *y, uint32_t *z);
+
+/* Read and return the X, Y and Z field strengths */
+bool MMC5983MA_readFieldsXYZ(SFE_MMC5983MA *dev, uint32_t *x, uint32_t *y, uint32_t *z);
+
+/* ── Internal (shadow register helpers — used in .c file, not public API) ── */
+
+bool MMC5983MA_setShadowBit(SFE_MMC5983MA *dev, uint8_t registerAddress, uint8_t bitMask, bool doWrite);
+bool MMC5983MA_clearShadowBit(SFE_MMC5983MA *dev, uint8_t registerAddress, uint8_t bitMask, bool doWrite);
+bool MMC5983MA_isShadowBitSet(SFE_MMC5983MA *dev, uint8_t registerAddress, uint8_t bitMask);
+uint16_t MMC5983MA_getTimeout(SFE_MMC5983MA *dev);
+
+#endif /* SPARKFUN_MMC5983MA_H */

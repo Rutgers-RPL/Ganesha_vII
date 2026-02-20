@@ -13,32 +13,30 @@
 
 // Macro for invoking the callback if the function pointer is valid
 #define SAFE_CALLBACK(cb, code) \
-    if (cb != nullptr)          \
+    if (cb != NULL)          \
     {                           \
         cb(code);               \
     }
 
 
 // Registers definitions
-static const uint8_t X_OUT_0_REG    = 0x0;
-static const uint8_t X_OUT_1_REG    = 0X01;
-static const uint8_t Y_OUT_0_REG    = 0x02;
-static const uint8_t Y_OUT_1_REG    = 0x03;
-static const uint8_t Z_OUT_0_REG    = 0x04;
-static const uint8_t Z_OUT_1_REG    = 0x05;
-static const uint8_t XYZ_OUT_2_REG  = 0x06;
-static const uint8_t T_OUT_REG      = 0x07;
-static const uint8_t STATUS_REG     = 0x08;
-static const uint8_t INT_CTRL_0_REG = 0x09;
-static const uint8_t INT_CTRL_1_REG = 0x0a;
-static const uint8_t INT_CTRL_2_REG = 0x0b;
-static const uint8_t INT_CTRL_3_REG = 0x0c;
-static const uint8_t PROD_ID_REG    = 0x2f;
-static const uint8_t DUMMY          = 0x0;
-									
-// Constants definitions            
-static const uint8_t I2C_ADDR       = 0x30;
-static const uint8_t PROD_ID        = 0x30;
+#define  X_OUT_0_REG     0x00
+#define  X_OUT_1_REG     0X01
+#define  Y_OUT_0_REG     0x02
+#define  Y_OUT_1_REG     0x03
+#define  Z_OUT_0_REG     0x04
+#define  Z_OUT_1_REG     0x05
+#define  XYZ_OUT_2_REG   0x06
+#define  T_OUT_REG       0x07
+#define  STATUS_REG      0x08
+#define  INT_CTRL_0_REG  0x09
+#define  INT_CTRL_1_REG  0x0a
+#define  INT_CTRL_2_REG  0x0b
+#define  INT_CTRL_3_REG  0x0c
+#define  PROD_ID_REG     0x2f
+#define  DUMMY           0x0
+#define  I2C_ADDR        0x30
+#define  PROD_ID         0x30
 
 // Bits definitions
 #define MEAS_M_DONE                 (1 << 0)
@@ -73,16 +71,16 @@ static const uint8_t PROD_ID        = 0x30;
 #define XYZ_0_SHIFT                 10
 #define XYZ_1_SHIFT                 2
 
-enum class SF_MMC5983MA_ERROR
+typedef enum
 {
-  NONE,
-  I2C_INITIALIZATION_ERROR,
-  SPI_INITIALIZATION_ERROR,
-  INVALID_DEVICE,
-  BUS_ERROR,
-  INVALID_FILTER_BANDWIDTH,
-  INVALID_CONTINUOUS_FREQUENCY,
-  INVALID_PERIODIC_SAMPLES
-};
+	SF_MMC5983MA_ERROR_NONE,
+	SF_MMC5983MA_ERROR_I2C_INITIALIZATION_ERROR,
+	SF_MMC5983MA_ERROR_SPI_INITIALIZATION_ERROR,
+	SF_MMC5983MA_ERROR_INVALID_DEVICE,
+	SF_MMC5983MA_ERROR_BUS_ERROR,
+	SF_MMC5983MA_ERROR_INVALID_FILTER_BANDWIDTH,
+	SF_MMC5983MA_ERROR_INVALID_CONTINUOUS_FREQUENCY,
+	SF_MMC5983MA_ERROR_INVALID_PERIODIC_SAMPLES
+} SF_MMC5983MA_ERROR;
 
 #endif

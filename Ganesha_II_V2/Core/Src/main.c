@@ -32,6 +32,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "STRUCTS.h"
+#include "SparkFun_MMC5983MA_STM32_Library.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,6 +69,8 @@ UART_HandleTypeDef huart8;
 DMA_HandleTypeDef hdma_uart8_rx;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
+
+SFE_MMC5983MA magnetometer;
 
 /* USER CODE BEGIN PV */
 //char gps_receive_buffer[BUFFER_SIZE];
@@ -266,14 +269,15 @@ int main(void)
       // POTENTIAL CODE FOR TESTING THE MAGNETOMETER BY IAN QUAYE
       // Initialize the magnetometer with SPI
          // CS pin is PA4 (GPIOA, GPIO_PIN_4)
-      magnetometer.begin(GPIOA, GPIO_PIN_4, &hspi1);
-      magnetometer.softReset();
-         magnetometer.setFilterBandwidth(400);  // 400 Hz
+      MMC5983MA_init(&magnetometer);
+      MMC5983MA_beginSPI(&magnetometer, GPIOA, MAG_CS_Pin, &hspi1);
+      MMC5983MA_softReset(&magnetometer);
+      MMC5983MA_setFilterBandwidth(&magnetometer, 400);
          while (1)
          {
              uint32_t MagX, MagY, MagZ;
 
-             magnetometer.getMeasurementXYZ(&MagX, &MagY, &MagZ);
+             MMC5983MA_getMeasurementXYZ(&magnetometer, &MagX, &MagY, &MagZ);
 
              HAL_Delay(50);
          }

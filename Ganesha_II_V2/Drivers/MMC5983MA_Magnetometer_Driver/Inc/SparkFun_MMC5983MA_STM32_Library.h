@@ -7,8 +7,8 @@
 #ifndef SPARKFUN_MMC5983MA_H
 #define SPARKFUN_MMC5983MA_H
 
-#include "SparkFun_MMC5983MA_STM32_IO.h"
 #include "SparkFun_MMC5983MA_STM32_Library_Constants.h"
+#include "SparkFun_MMC5983MA_STM32_IO.h"
 
 /* Shadow memory for write-only registers - default reset values are 0x0 */
 typedef struct {

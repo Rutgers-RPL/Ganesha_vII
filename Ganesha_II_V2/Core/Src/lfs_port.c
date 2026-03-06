@@ -3,6 +3,7 @@
 #include "lfs_port.h"
 
 extern SPI_HandleTypeDef hspi4;
+static lfs_t lfs;
 
 // Sets FLASH_CS low
 static void csLow() {
@@ -21,7 +22,10 @@ static void spiSend(uint8_t *send, uint16_t size) {
 
 // Receives data and stores in location
 static void spiReceive(uint8_t *location, uint16_t size) {
-    HAL_SPI_Receive(&hspi4, location, size, HAL_MAX_DELAY);
+	static uint8_t tx[2048];
+	memset(tx, 0xFF, size);
+
+    HAL_SPI_TransmitReceive(&hspi4, tx, location, size, HAL_MAX_DELAY);
 }
 
 struct lfs_config lfsconfig = {
@@ -41,7 +45,7 @@ struct lfs_config lfsconfig = {
 
 int lfs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t offset, uint8_t *location, lfs_size_t size){
 	// Calculate page to read from and column within page to start at
-	uint16_t page = block * W25N_PAGES_PER_BLOCK + (offset / W25N_PAGE_SIZE);
+	uint32_t page = block * W25N_PAGES_PER_BLOCK + (offset / W25N_PAGE_SIZE);
 	uint16_t col = offset % W25N_PAGE_SIZE;
 
 	// Read full page and put into cache
@@ -140,3 +144,44 @@ int lfs_sync(const struct lfs_config *c){
 	// Writes and erases are sent immediately within the methods, so nothing to actually sync. Method is just required by lfs.
 	return 0;
 }
+
+int stmlfs_mount(){
+	int err = lfs_mount(&lfs, &lfsconfig);
+
+	if (err){
+		lfs_format(&lfs, &lfsconfig);
+		err = lfs_mount(&lfs, &lfsconfig);
+	}
+
+	return err;
+}
+
+int stmlfs_unmount(){
+	return lfs_unmount(&lfs);
+}
+
+int stmlfs_file_open(lfs_file_t *file, const char *path, int flags)
+{
+    return lfs_file_open(&lfs, file, path, flags);
+}
+
+int stmlfs_file_read(lfs_file_t *file,void *buffer, lfs_size_t size)
+{
+    return lfs_file_read(&lfs, file, buffer, size);
+}
+
+int stmlfs_file_rewind(lfs_file_t *file)
+{
+    return lfs_file_rewind(&lfs, file);
+}
+
+lfs_ssize_t stmlfs_file_write(lfs_file_t *file,const void *buffer, lfs_size_t size)
+{
+    return lfs_file_write(&lfs, file, buffer, size);
+}
+
+int stmlfs_file_close(lfs_file_t *file)
+{
+    return lfs_file_close(&lfs, file);
+}
+

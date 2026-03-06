@@ -21,11 +21,18 @@
 #define W25N_BLOCK_SIZE					(W25N_PAGE_SIZE * W25N_PAGES_PER_BLOCK)
 #define W25N_BLOCK_COUNT				1024
 
-
 int lfs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t offset, uint8_t *location, lfs_size_t size);
 int lfs_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t offset, uint8_t *data, lfs_size_t size);
 int lfs_erase(const struct lfs_config *c, lfs_block_t block);
 int lfs_sync(const struct lfs_config *c);
 
+int stmlfs_file_open(lfs_file_t *file, const char *path, int flags);
+int stmlfs_file_read(lfs_file_t *file,void *buffer, lfs_size_t size);
+int stmlfs_file_rewind(lfs_file_t *file);
+lfs_ssize_t stmlfs_file_write(lfs_file_t *file,const void *buffer, lfs_size_t size);
+int stmlfs_file_close(lfs_file_t *file);
+
+int stmlfs_mount();
+int stmlfs_unmount();
 
 #endif /* INC_LITTLEFS_LFS_PORT_H_ */

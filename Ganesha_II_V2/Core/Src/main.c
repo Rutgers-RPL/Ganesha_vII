@@ -32,6 +32,9 @@
 #include <string.h>
 #include <stdint.h>
 #include "STRUCTS.h"
+#include "lfs.h"
+#include "lfs_port.h"
+#include "lfs_util.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -176,6 +179,7 @@ int main(void)
 	  char uart_buf[50];
 	  int uart_buf_len;
 	  uint16_t timer_val;
+	  lfs_file_t file;
 
   /* USER CODE END 1 */
 
@@ -210,22 +214,74 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   GPS_Init();
+//
+//  uint8_t bmi088_init_try_count = 1;
+//
+//  while (bmi088_init_ok == 0 && bmi088_init_try_count <= 3) {
+//	  if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
+//		  bmi088_init_ok = 1;
+//		  break;
+//	  } else {
+//		  bmi088_init_try_count++;
+//		  HAL_Delay(500);
+//	  }
+//  }
+//
+//  if (bmp581_init(&bmp581, &hi2c2) == BMP5_OK) {
+//	  bmp581_init_ok = 1;
+//  }
 
-  uint8_t bmi088_init_try_count = 1;
 
-  while (bmi088_init_ok == 0 && bmi088_init_try_count <= 3) {
-	  if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
-		  bmi088_init_ok = 1;
-		  break;
-	  } else {
-		  bmi088_init_try_count++;
-		  HAL_Delay(500);
-	  }
+  /* lfs_mount is failing;
+   * lfs_init is fine;
+   * fails line 4497 in lfs.c while "fetching next block in tail list"
+   * fails like 1126 - lfs_bd_read
+   * on line 116 of lfs_bd_read
+   * int err = lfs->cfg->read(lfs->cfg, rcache->block,
+                rcache->off, rcache->buffer, rcache->size);
+        LFS_ASSERT(err <= 0);
+        if (err) {
+            return err;
+        }
+   *
+   **/
+  uint32_t boot_count = 10;
+
+  uint8_t id[3];
+  uint8_t cmd = 0x9F;
+
+  csLow();
+  csHigh();
+
+  //test
+//  csLow();
+//  HAL_SPI_Transmit(&hspi4, &cmd, 1, HAL_MAX_DELAY);
+//  HAL_SPI_TransmitReceive(&hspi4, (uint8_t[]){0xFF,0xFF,0xFF}, id, 3, HAL_MAX_DELAY);
+//  csHigh();
+
+
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
+
+
+  stmlfs_mount();
+
+  for(int i = 0; i < boot_count; ++i) {
+      	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+      	  HAL_Delay(100);
   }
 
-  if (bmp581_init(&bmp581, &hi2c2) == BMP5_OK) {
-	  bmp581_init_ok = 1;
-  }
+  stmlfs_file_open(&file, "boot_count", LFS_O_RDWR | LFS_O_CREAT);
+  stmlfs_file_read(&file, &boot_count, sizeof(boot_count));
+
+  boot_count += 1;
+  stmlfs_file_rewind(&file);
+  stmlfs_file_write(&file, &boot_count, sizeof(boot_count));
+
+  stmlfs_file_close(&file);
+
+  stmlfs_unmount();
+
 
   short magic = 0xBEEF;
   packet.magic = magic;
@@ -600,7 +656,7 @@ static void MX_SPI4_Init(void)
   hspi4.Instance = SPI4;
   hspi4.Init.Mode = SPI_MODE_MASTER;
   hspi4.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi4.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi4.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi4.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi4.Init.NSS = SPI_NSS_SOFT;

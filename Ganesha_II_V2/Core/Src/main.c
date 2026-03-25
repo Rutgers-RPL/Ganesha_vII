@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include "STRUCTS.h"
 #include "SparkFun_MMC5983MA_STM32_Library.h"
+#include "MMC5983MA_tester_stm32h7_hal.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -70,7 +71,7 @@ DMA_HandleTypeDef hdma_uart8_rx;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
-SFE_MMC5983MA magnetometer;
+MMC5983MA_Tester magTester;
 
 /* USER CODE BEGIN PV */
 //char gps_receive_buffer[BUFFER_SIZE];
@@ -266,23 +267,10 @@ int main(void)
       __HAL_UART_CLEAR_OREFLAG(&huart5);
       HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 
-      // POTENTIAL CODE FOR TESTING THE MAGNETOMETER BY IAN QUAYE
-      // Initialize the magnetometer with SPI
-         // CS pin is PA4 (GPIOA, GPIO_PIN_4)
-      MMC5983MA_init(&magnetometer);
-      MMC5983MA_beginSPI(&magnetometer, GPIOA, MAG_CS_Pin, &hspi1);
-      MMC5983MA_softReset(&magnetometer);
-      MMC5983MA_setFilterBandwidth(&magnetometer, 400);
-         while (1)
-         {
-             uint32_t MagX, MagY, MagZ;
-
-             MMC5983MA_getMeasurementXYZ(&magnetometer, &MagX, &MagY, &MagZ);
-
-             HAL_Delay(50);
-         }
-
-
+      // POTENTIAL CODE FOR TESTING THE MAGNETOMETER BY IAN QUAYE & SUMEDH CAMARUSHI
+      // Initialize the MMC5983MA tester on SPI1
+      // PA4: MAG_CS, PA5: SPI1_SCK, PA6: SPI1_MISO, PA7: SPI1_MOSI
+      MMC5983MA_Tester_InitSPI(&magTester, &hspi1, MAG_CS_GPIO_Port, MAG_CS_Pin, &huart5, LED_GPIO_Port, LED_Pin);
 
 
   /* USER CODE END 2 */
@@ -301,64 +289,67 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  packet.latitude_degrees = gps_packet.latitude_degrees;
-	  packet.longitude_degrees = gps_packet.longitude_degrees;
-	  packet.numSatellites = gps_packet.numSatellites;
-	  packet.gpsFixType = gps_packet.gpsFixType;
-	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
+    	  // Run magnetometer tester (non-blocking, 500 ms cadence)
+    	  MMC5983MA_Tester_Run(&magTester);
 
-	  packet.acceleration_x_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.x);
-	  packet.acceleration_y_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.y);
-	  packet.acceleration_z_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.z);
+    	  packet.latitude_degrees = gps_packet.latitude_degrees;
+    	  packet.longitude_degrees = gps_packet.longitude_degrees;
+    	  packet.numSatellites = gps_packet.numSatellites;
+    	  packet.gpsFixType = gps_packet.gpsFixType;
+    	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
-	  packet.angular_velocity_x_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.x);
-	  packet.angular_velocity_y_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.y);
-	  packet.angular_velocity_z_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.z);
+    	  packet.acceleration_x_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.x);
+    	  packet.acceleration_y_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.y);
+    	  packet.acceleration_z_mss = MILLIG_TO_MSS_FLOAT(bmi088_accel_data.z);
 
-	  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
-	  packet.temperature_c = (float)(bmp_data.temperature);
+    	  packet.angular_velocity_x_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.x);
+    	  packet.angular_velocity_y_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.y);
+    	  packet.angular_velocity_z_rads = DEG_TO_RAD_FLOAT(bmi088_gyro_data.z);
 
-	  if(camera_fired == 1){
-		  packet.status = 1;
-	  }else{
-		  packet.status = 0;
-	  }
+    	  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
+    	  packet.temperature_c = (float)(bmp_data.temperature);
 
-	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
+    	  if(camera_fired == 1){
+    		  packet.status = 1;
+    	  }else{
+    		  packet.status = 0;
+    	  }
 
-	           //Transmit or otherwise use the data
-	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
+    	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
-	  //uint16_t magic = 0xBEEF;
-	  //HAL_UART_Transmit(&huart5, (uint8_t *)&magic, 2, HAL_MAX_DELAY);
+    	  //Transmit or otherwise use the data
+    	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 
-	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
-	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_FE);
-	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_NE);
+    	  //uint16_t magic = 0xBEEF;
+    	  //HAL_UART_Transmit(&huart5, (uint8_t *)&magic, 2, HAL_MAX_DELAY);
 
-	  // Define your 16-bit value
-	// uint8_t magic[2] = {0xBE, 0xEF};  // Store the 16-bit value
+    	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
+    	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_FE);
+    	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_NE);
 
-	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
-	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
+    	  // Define your 16-bit value
+    	  // uint8_t magic[2] = {0xBE, 0xEF};  // Store the 16-bit value
 
-	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-	      bmp581_get_data(&bmp581, &bmp_data);
-//	      HAL_Delay(50);
+    	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
+    	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
 
-
-
-
+    	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+    	  bmp581_get_data(&bmp581, &bmp_data);
+    	  //	      HAL_Delay(50);
 
 
-	  HAL_Delay(50);
 
-//	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-//	  HAL_UART_Receive(&huart8, (uint8_t*)seq,256,HAL_MAX_DELAY);
-//	  HAL_Delay(500);
 
-  }
-  /* USER CODE END 3 */
+
+
+    	  HAL_Delay(50);
+
+    	  //	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+    	  //	  HAL_UART_Receive(&huart8, (uint8_t*)seq,256,HAL_MAX_DELAY);
+    	  //	  HAL_Delay(500);
+
+      }
+      /* USER CODE END 3 */
 }
 
 /**

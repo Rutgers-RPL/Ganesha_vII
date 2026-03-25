@@ -14,7 +14,7 @@ typedef enum {
 } MMC5983MA_TesterBus;
 
 typedef struct {
-    SFE_MMC5983MA mag;
+    SFE_MMC5983MA magnetometer;
     MMC5983MA_TesterBus busType;
 
     I2C_HandleTypeDef *hi2c;

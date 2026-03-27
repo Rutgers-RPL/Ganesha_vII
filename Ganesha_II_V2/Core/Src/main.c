@@ -69,7 +69,6 @@ UART_HandleTypeDef huart8;
 DMA_HandleTypeDef hdma_uart8_rx;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
-
 SFE_MMC5983MA magnetometer;
 
 /* USER CODE BEGIN PV */
@@ -270,14 +269,17 @@ int main(void)
       // Initialize the magnetometer with SPI
          // CS pin is PA4 (GPIOA, GPIO_PIN_4)
       MMC5983MA_init(&magnetometer);
-      MMC5983MA_beginSPI(&magnetometer, GPIOA, MAG_CS_Pin, &hspi1);
-      MMC5983MA_softReset(&magnetometer);
-      MMC5983MA_setFilterBandwidth(&magnetometer, 400);
+      uint32_t check1 = MMC5983MA_beginSPI(&magnetometer, GPIOA, MAG_CS_Pin, &hspi1);
+      uint32_t check2 = MMC5983MA_softReset(&magnetometer);
+      uint32_t check3 = MMC5983MA_setFilterBandwidth(&magnetometer, 400);
          while (1)
          {
              uint32_t MagX, MagY, MagZ;
 
              MMC5983MA_getMeasurementXYZ(&magnetometer, &MagX, &MagY, &MagZ);
+             float gauss_x = ((float)MagX - 131072.0f) / 16384.0f;
+             float gauss_y = ((float)MagY - 131072.0f) / 16384.0f;
+             float gauss_z = ((float)MagZ - 131072.0f) / 16384.0f;
 
              HAL_Delay(50);
          }
@@ -520,8 +522,8 @@ static void MX_SPI1_Init(void)
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;

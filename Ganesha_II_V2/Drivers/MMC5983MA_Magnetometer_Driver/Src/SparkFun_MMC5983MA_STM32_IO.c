@@ -51,8 +51,9 @@ bool MMC5983MA_IO_beginSPI(SFE_MMC5983MA_IO *io, GPIO_TypeDef *csPort, uint16_t 
 
     /* Set CS pin high (inactive) */
     HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);
-
-    return MMC5983MA_IO_isConnected(io);
+    bool result = false;
+    result = MMC5983MA_IO_isConnected(io);
+    return result;
 }
 
 /* ── Connection ──────────────────────────────────────────────────────────── */
@@ -60,36 +61,19 @@ bool MMC5983MA_IO_beginSPI(SFE_MMC5983MA_IO *io, GPIO_TypeDef *csPort, uint16_t 
 bool MMC5983MA_IO_isConnected(SFE_MMC5983MA_IO *io)
 {
     bool result = false;
+		uint8_t txData[2] = {READ_REG(PROD_ID_REG), DUMMY};  // Send address + dummy
+		uint8_t rxData[2] = {0, 0};                          // Receive 2 bytes
 
-    if (io->useSPI)
-    {
-        uint8_t txData = READ_REG(PROD_ID_REG);
-        uint8_t rxData = 0;
+		HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_RESET);
 
-        HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_RESET);
+		// Send 2 bytes, receive 2 bytes in ONE transaction
+		if (HAL_SPI_TransmitReceive(io->hspi, txData, rxData, 2, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
+		{
+			result = (rxData[1] == PROD_ID);  // Data comes in second byte
+		}
 
-        if (HAL_SPI_Transmit(io->hspi, &txData, 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
-        {
-            uint8_t dummy = DUMMY;
-            if (HAL_SPI_TransmitReceive(io->hspi, &dummy, &rxData, 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
-            {
-                result = (rxData == PROD_ID);
-            }
-        }
-
-        HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);
-    }
-    else
-    {
-        if (HAL_I2C_IsDeviceReady(io->hi2c, io->address, 3, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
-        {
-            uint8_t id = 0;
-            result  = MMC5983MA_IO_readSingleByte(io, PROD_ID_REG, &id);
-            result &= (id == PROD_ID);
-        }
-    }
-
-    return result;
+		HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);
+        return result;
 }
 
 /* ── Write ───────────────────────────────────────────────────────────────── */

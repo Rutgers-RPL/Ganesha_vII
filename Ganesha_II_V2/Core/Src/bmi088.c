@@ -95,12 +95,12 @@ int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle) {
 	bmi->dev.accel_cfg.power = BMI08_ACCEL_PM_ACTIVE;
 	bmi->dev.accel_cfg.range = BMI088_ACCEL_RANGE_24G;
 	bmi->dev.accel_cfg.bw = BMI08_ACCEL_BW_NORMAL;
-	bmi->dev.accel_cfg.odr = BMI08_ACCEL_ODR_1600_HZ;
+	bmi->dev.accel_cfg.odr = BMI08_ACCEL_ODR_800_HZ;
 
 	bmi->dev.gyro_cfg.power = BMI08_GYRO_PM_NORMAL;
-	bmi->dev.gyro_cfg.range = BMI08_GYRO_RANGE_1000_DPS;
-	bmi->dev.gyro_cfg.bw = BMI08_GYRO_BW_230_ODR_2000_HZ;
-	bmi->dev.gyro_cfg.odr = BMI08_GYRO_BW_230_ODR_2000_HZ;
+	bmi->dev.gyro_cfg.range = BMI08_GYRO_RANGE_2000_DPS;
+	bmi->dev.gyro_cfg.bw = BMI08_GYRO_BW_116_ODR_1000_HZ;
+	bmi->dev.gyro_cfg.odr = BMI08_GYRO_BW_116_ODR_1000_HZ;
 
 	accel_new_data_int_cfg.int_channel = BMI08_INT_CHANNEL_1;
 	accel_new_data_int_cfg.int_type = BMI08_ACCEL_INT_DATA_RDY;

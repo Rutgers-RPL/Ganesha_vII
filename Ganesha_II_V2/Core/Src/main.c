@@ -120,13 +120,7 @@ if(huart->Instance == UART5){
 
 
 uint32_t calculate_checksum(const uint8_t *data, size_t length) {
-    size_t padded_length = (length + 3) & ~0x03; //hcrc is word-based, so we need to pad to a multiple of 4 bytes
-
-    uint8_t pad_buffer[padded_length];
-    memset(pad_buffer, 0, padded_length);
-    memcpy(pad_buffer, data, length);
-
-    return HAL_CRC_Calculate(&hcrc, (uint32_t *)pad_buffer, padded_length / 4);
+    return HAL_CRC_Calculate(&hcrc, (uint32_t *)data, length);
 }
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
@@ -308,6 +302,7 @@ int main(void)
 	  }else{
 		  packet.status = 0;
 	  }
+	  bmp581_get_data(&bmp581, &bmp_data);
 
 	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
@@ -327,8 +322,7 @@ int main(void)
 	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
 	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
 
-	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-	      bmp581_get_data(&bmp581, &bmp_data);
+
 //	      HAL_Delay(50);
 
 

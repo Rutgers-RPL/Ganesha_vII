@@ -10,6 +10,8 @@
 
 #include "arm_math.h"
 
+#define g_mss 9.81f
+
 struct Kalman_Filter_Instance {
     float32_t x_data[2];
     float32_t P_data[4];
@@ -20,6 +22,8 @@ struct Kalman_Filter_Instance {
     float32_t K_data[2];
     float32_t y_data[1];
     float32_t S_data[1];
+    float32_t B_data[2];
+    float32_t u_data[1];
 
     arm_matrix_instance_f32 x;
     arm_matrix_instance_f32 P;
@@ -30,6 +34,8 @@ struct Kalman_Filter_Instance {
     arm_matrix_instance_f32 K;
     arm_matrix_instance_f32 y;
     arm_matrix_instance_f32 S;
+    arm_matrix_instance_f32 B;
+    arm_matrix_instance_f32 u;
 
     float32_t dt;
     float32_t barometric_altitude;
@@ -37,7 +43,7 @@ struct Kalman_Filter_Instance {
     float32_t orientation_quaternion[4];
 };
 
-void kalman_filter_init(struct Kalman_Filter_Instance* instance);
+void kalman_filter_init(struct Kalman_Filter_Instance* instance, float32_t dt);
 void kalman_filter_update(struct Kalman_Filter_Instance* instance);
 void kalman_filter_update_barometric_altitude(struct Kalman_Filter_Instance* instance, float32_t barometric_altitude);
 void kalman_filter_update_accel(struct Kalman_Filter_Instance* instance, float32_t x, float32_t y, float32_t z);

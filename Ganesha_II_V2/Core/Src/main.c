@@ -98,6 +98,7 @@ uint8_t camera_buffer[4];
 uint8_t camera_fired = 0;
 ganesha_II_packet packet;
 
+
 struct BMP581 bmp581;
 struct bmp5_sensor_data bmp_data;
 uint8_t bmp581_init_ok = 0;
@@ -120,13 +121,7 @@ if(huart->Instance == UART5){
 
 
 uint32_t calculate_checksum(const uint8_t *data, size_t length) {
-    size_t padded_length = (length + 3) & ~0x03; //hcrc is word-based, so we need to pad to a multiple of 4 bytes
-
-    uint8_t pad_buffer[padded_length];
-    memset(pad_buffer, 0, padded_length);
-    memcpy(pad_buffer, data, length);
-
-    return HAL_CRC_Calculate(&hcrc, (uint32_t *)pad_buffer, padded_length / 4);
+    return HAL_CRC_Calculate(&hcrc, (uint32_t *)data, length);
 }
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
@@ -148,16 +143,31 @@ uint8_t bmi088_init_ok = 0;
 struct BMI088 bmi088;
 struct bmi08_sensor_data bmi088_accel_data;
 struct bmi08_sensor_data bmi088_gyro_data;
+volatile uint8_t accel_ready;
+volatile uint8_t gyro_ready;
+volatile uint8_t baro_ready;
 
 void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	if (pin == BMI088_GYRO_INT_PIN) {
 		if (bmi088_init_ok == 0) return;
-		bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
+
+		if (!gyro_ready){
+			gyro_ready = 1;
+		}
+
 	} else if (pin == BMI088_ACCEL_INT_PIN) {
 		if (bmi088_init_ok == 0) return;
-		bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
+
+		if (!accel_ready){
+					accel_ready = 1;
+				}
+
 	} else if (pin == Btn_Interrupt_Pin) {
-		bmp581_get_data(&bmp581, &bmp_data);
+
+		if (!baro_ready){
+			baro_ready = 1;
+		}
+
     }
 
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
@@ -292,16 +302,33 @@ int main(void)
 	  packet.gpsFixType = gps_packet.gpsFixType;
 	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
-	  packet.acceleration_x_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.x);
-	  packet.acceleration_y_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.y);
-	  packet.acceleration_z_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.z);
+	  if (accel_ready && gyro_ready){
 
-	  packet.angular_velocity_x_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.x);
-	  packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
-	  packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
+		  bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
+		  bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
 
-	  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
-	  packet.temperature_c = (float)(bmp_data.temperature);
+		  packet.acceleration_x_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.x);
+		  packet.acceleration_y_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.y);
+		  packet.acceleration_z_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.z);
+
+		  packet.angular_velocity_x_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.x);
+		  packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
+		  packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
+
+		  accel_ready = 0;
+		  gyro_ready = 0;
+
+	  }
+
+	  if (baro_ready){
+
+		  bmp581_get_data(&bmp581, &bmp_data);
+		  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
+		  packet.temperature_c = (float)(bmp_data.temperature);
+
+		  baro_ready = 0;
+
+	  }
 
 	  if(camera_fired == 1){
 		  packet.status = 1;
@@ -311,34 +338,11 @@ int main(void)
 
 	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
-	           //Transmit or otherwise use the data
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
-
-	  //uint16_t magic = 0xBEEF;
-	  //HAL_UART_Transmit(&huart5, (uint8_t *)&magic, 2, HAL_MAX_DELAY);
-
-	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
-	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_FE);
-	  //__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_NE);
-
-	  // Define your 16-bit value
-	// uint8_t magic[2] = {0xBE, 0xEF};  // Store the 16-bit value
-
-	//__HAL_UART_CLEAR_FLAG(&huart5, UART_FLAG_ORE);
-	  //HAL_UART_Transmit(&huart5, magic, 2, HAL_MAX_DELAY);   // ✅ Send 5 bytes ("hello")  // Send 1 byte
-
-	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-	      bmp581_get_data(&bmp581, &bmp_data);
-//	      HAL_Delay(50);
-
-
-
 
 
 
 	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-//	  HAL_UART_Receive(&huart8, (uint8_t*)seq,256,HAL_MAX_DELAY);
-//	  HAL_Delay(500);
 
   }
   /* USER CODE END 3 */

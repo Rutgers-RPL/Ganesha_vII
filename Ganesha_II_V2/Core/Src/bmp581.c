@@ -74,18 +74,13 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 }
 
 
-int8_t bmp581_get_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
+void bmp581_update_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
 {
-	int8_t result = bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
-	bmp581_update_altitude(bmp581, data);
-	return result;
+	bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
 }
 
 void bmp581_update_altitude(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {
-	float mbar = (data->pressure)/100.0;
-	float feet = 145366.46*(1-pow((mbar/1013.25), 0.190284));
-	float meters = feet * 0.3048;
-	bmp581->altitude = meters;
+
 }
 
 int8_t bmp581_get_power_mode(struct BMP581 *bmp581, enum bmp5_powermode *powermode) {

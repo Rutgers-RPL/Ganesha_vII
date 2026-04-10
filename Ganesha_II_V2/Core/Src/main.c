@@ -322,8 +322,8 @@ int main(void)
 
 	  if (baro_ready){
 
-		  bmp581_get_data(&bmp581, &bmp_data);
-		  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
+		  bmp581_update_data(&bmp581, &bmp_data);
+		  packet.barometer_hMSL_m = bmp581_estimate_altitude_msl(&bmp581, &bmp_data);
 		  packet.temperature_c = (float)(bmp_data.temperature);
 
 		  baro_ready = 0;

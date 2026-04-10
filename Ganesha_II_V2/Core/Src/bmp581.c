@@ -74,13 +74,42 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 }
 
 
-void bmp581_update_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
+int8_t bmp581_update_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
 {
-	bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
+	return bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
 }
 
-void bmp581_update_altitude(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {
+float calc_altitude_troposphere_msl(float pressure) {
+    float exponent = (-GAS_CONSTANT * TROPOSPHERE_LAPSE_RATE) / (_g_ * AIR_MOLAR_MASS);
+    float pressure_ratio = pressure / STANDARD_SEA_LEVEL_PRESSURE;
+    float power_term = pow(pressure_ratio, exponent) - 1;
 
+    return (STANDARD_SEA_LEVEL_TEMP_K / TROPOSPHERE_LAPSE_RATE) * power_term;
+}
+
+float calc_altitude_lower_stratosphere_msl(float pressure) {
+    float log_ratio = log(pressure / TROPOPAUSE_PRESSURE);
+    float scale_factor = (GAS_CONSTANT * STRATOSPHERE_BASE_TEMP_K) / (_g_ * AIR_MOLAR_MASS);
+
+    return TROPOPAUSE_BASE_ALTITUDE - (scale_factor * log_ratio);
+}
+
+float calc_altitude_upper_stratosphere_msl(float pressure) {
+    float exponent = (-GAS_CONSTANT * UPPER_STRATOSPHERE_LAPSE_RATE) / (_g_ * AIR_MOLAR_MASS);
+    float pressure_ratio = pressure / STRATOSPHERE_MIDDLE_PRESSURE;
+    float power_term = pow(pressure_ratio, exponent) - 1;
+
+    return STRATOSPHERE_MIDDLE_BASE_ALTITUDE + (STRATOSPHERE_BASE_TEMP_K / UPPER_STRATOSPHERE_LAPSE_RATE) * power_term;
+}
+
+float bmp581_estimate_altitude_msl(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {
+    if (data->pressure > TROPOPAUSE_PRESSURE) {
+        return calc_altitude_troposphere_msl(data->pressure);
+    } else if (data->pressure > STRATOSPHERE_MIDDLE_PRESSURE) {
+        return calc_altitude_lower_stratosphere_msl(data->pressure);
+    } else {
+        return calc_altitude_upper_stratosphere_msl(data->pressure);
+    }
 }
 
 int8_t bmp581_get_power_mode(struct BMP581 *bmp581, enum bmp5_powermode *powermode) {

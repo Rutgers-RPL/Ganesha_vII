@@ -22,7 +22,6 @@
 #define STRATOSPHERE_BASE_TEMP_K 216.65f
 #define UPPER_STRATOSPHERE_LAPSE_RATE 0.001f
 
-
 struct BMP581 {
 	struct bmp5_dev device;
 	struct bmp5_osr_odr_press_config odr_config;

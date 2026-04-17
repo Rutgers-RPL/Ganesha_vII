@@ -80,26 +80,26 @@ int8_t bmp581_update_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
 }
 
 static inline float calc_altitude_troposphere_msl(float pressure) {
-    float exponent = (-GAS_CONSTANT * TROPOSPHERE_LAPSE_RATE) / (GRAVITY_MSS * AIR_MOLAR_MASS);
+    float exponent = (-GAS_CONSTANT * TROPOSPHERE_LAPSE_RATE) / (GRAVITY_ACCEL * AIR_MOLAR_MASS);
     float pressure_ratio = pressure / STANDARD_SEA_LEVEL_PRESSURE;
     float power_term = pow(pressure_ratio, exponent) - 1;
 
-    return (STANDARD_SEA_LEVEL_TEMP_K / TROPOSPHERE_LAPSE_RATE) * power_term;
+    return (STANDARD_SEA_LEVEL_TEMP / TROPOSPHERE_LAPSE_RATE) * power_term;
 }
 
 static inline float calc_altitude_lower_stratosphere_msl(float pressure) {
     float log_ratio = log(pressure / TROPOPAUSE_PRESSURE);
-    float scale_factor = (GAS_CONSTANT * STRATOSPHERE_BASE_TEMP_K) / (GRAVITY_MSS * AIR_MOLAR_MASS);
+    float scale_factor = (GAS_CONSTANT * STRATOSPHERE_BASE_TEMP) / (GRAVITY_ACCEL * AIR_MOLAR_MASS);
 
     return TROPOPAUSE_BASE_ALTITUDE - (scale_factor * log_ratio);
 }
 
 static inline float calc_altitude_upper_stratosphere_msl(float pressure) {
-    float exponent = (-GAS_CONSTANT * UPPER_STRATOSPHsERE_LAPSE_RATE) / (GRAVITY_MSS * AIR_MOLAR_MASS);
+    float exponent = (-GAS_CONSTANT * UPPER_STRATOSPHERE_LAPSE_RATE) / (GRAVITY_ACCEL * AIR_MOLAR_MASS);
     float pressure_ratio = pressure / STRATOSPHERE_MIDDLE_PRESSURE;
     float power_term = pow(pressure_ratio, exponent) - 1;
 
-    return STRATOSPHERE_MIDDLE_BASE_ALTITUDE + (STRATOSPHERE_BASE_TEMP_K / UPPER_STRATOSPHERE_LAPSE_RATE) * power_term;
+    return STRATOSPHERE_MIDDLE_BASE_ALTITUDE + (STRATOSPHERE_BASE_TEMP / UPPER_STRATOSPHERE_LAPSE_RATE) * power_term;
 }
 
 float bmp581_estimate_altitude_msl(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {

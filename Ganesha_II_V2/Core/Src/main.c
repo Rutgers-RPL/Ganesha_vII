@@ -286,7 +286,7 @@ int main(void)
 	  packet.latitude_degrees = gps_packet.latitude_degrees;
 	  packet.longitude_degrees = gps_packet.longitude_degrees;
 	  packet.numSatellites = gps_packet.numSatellites;
-	  packet.gpsFixType = gps _packet.gpsFixType;
+	  packet.gpsFixType = gps_packet.gpsFixType;
 	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
 	  if (accel_ready && gyro_ready){

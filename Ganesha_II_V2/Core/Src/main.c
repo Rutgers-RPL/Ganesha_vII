@@ -145,7 +145,6 @@ struct bmi08_sensor_data bmi088_accel_data;
 struct bmi08_sensor_data bmi088_gyro_data;
 volatile uint8_t accel_ready;
 volatile uint8_t gyro_ready;
-volatile uint8_t baro_ready;
 
 void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	if (pin == BMI088_GYRO_INT_PIN) {
@@ -159,16 +158,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 		if (bmi088_init_ok == 0) return;
 
 		if (!accel_ready){
-					accel_ready = 1;
-				}
-
-	} else if (pin == Btn_Interrupt_Pin) {
-
-		if (!baro_ready){
-			baro_ready = 1;
+			accel_ready = 1;
 		}
 
-    }
+	}
 
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }
@@ -293,7 +286,7 @@ int main(void)
 	  packet.latitude_degrees = gps_packet.latitude_degrees;
 	  packet.longitude_degrees = gps_packet.longitude_degrees;
 	  packet.numSatellites = gps_packet.numSatellites;
-	  packet.gpsFixType = gps_packet.gpsFixType;
+	  packet.gpsFixType = gps _packet.gpsFixType;
 	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
 	  if (accel_ready && gyro_ready){

@@ -145,7 +145,6 @@ struct bmi08_sensor_data bmi088_accel_data;
 struct bmi08_sensor_data bmi088_gyro_data;
 volatile uint8_t accel_ready;
 volatile uint8_t gyro_ready;
-volatile uint8_t baro_ready;
 
 void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	if (pin == BMI088_GYRO_INT_PIN) {
@@ -159,16 +158,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 		if (bmi088_init_ok == 0) return;
 
 		if (!accel_ready){
-					accel_ready = 1;
-				}
-
-	} else if (pin == Btn_Interrupt_Pin) {
-
-		if (!baro_ready){
-			baro_ready = 1;
+			accel_ready = 1;
 		}
 
-    }
+	}
 
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }
@@ -221,6 +214,8 @@ int main(void)
 
   GPS_Init();
 
+  uint32_t prev_baro_read_time = HAL_GetTick();
+
   uint8_t bmi088_init_try_count = 1;
 
   while (bmi088_init_ok == 0 && bmi088_init_try_count <= 3) {
@@ -269,16 +264,8 @@ int main(void)
       packet.z = 0.0f;
       packet.checksum = 0;
 
-
       __HAL_UART_CLEAR_OREFLAG(&huart5);
       HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
-
-
-
-
-
-
-
 
   /* USER CODE END 2 */
 
@@ -320,19 +307,19 @@ int main(void)
 
 	  }
 
-	  if (baro_ready){
+	  uint32_t current_time = HAL_GetTick();
 
-		  bmp581_get_data(&bmp581, &bmp_data);
-		  packet.barometer_hMSL_m = (float)(bmp_data.pressure);
-		  packet.temperature_c = (float)(bmp_data.temperature);
-
-		  baro_ready = 0;
-
+	  if (current_time - prev_baro_read_time >= 2) {
+	      prev_baro_read_time = current_time;
+		  bmp581_update_data(&bmp581, &bmp_data);
 	  }
 
-	  if(camera_fired == 1){
+	  packet.barometer_hMSL_m = bmp581_estimate_altitude_msl(&bmp581, &bmp_data);
+	  packet.temperature_c = bmp_data.temperature;
+
+	  if (camera_fired == 1){
 		  packet.status = 1;
-	  }else{
+	  } else {
 		  packet.status = 0;
 	  }
 
@@ -340,10 +327,7 @@ int main(void)
 
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 
-
-
 	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-
   }
   /* USER CODE END 3 */
 }

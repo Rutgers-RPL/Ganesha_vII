@@ -74,18 +74,42 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 }
 
 
-int8_t bmp581_get_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
+int8_t bmp581_update_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
 {
-	int8_t result = bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
-	bmp581_update_altitude(bmp581, data);
-	return result;
+	return bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
 }
 
-void bmp581_update_altitude(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {
-	float mbar = (data->pressure)/100.0;
-	float feet = 145366.46*(1-pow((mbar/1013.25), 0.190284));
-	float meters = feet * 0.3048;
-	bmp581->altitude = meters;
+static inline float calc_altitude_troposphere_msl(float pressure) {
+    float exponent = (-GAS_CONSTANT * TROPOSPHERE_LAPSE_RATE) / (GRAVITY_ACCEL * AIR_MOLAR_MASS);
+    float pressure_ratio = pressure / STANDARD_SEA_LEVEL_PRESSURE;
+    float power_term = pow(pressure_ratio, exponent) - 1;
+
+    return (STANDARD_SEA_LEVEL_TEMP / TROPOSPHERE_LAPSE_RATE) * power_term;
+}
+
+static inline float calc_altitude_lower_stratosphere_msl(float pressure) {
+    float log_ratio = log(pressure / TROPOPAUSE_PRESSURE);
+    float scale_factor = (GAS_CONSTANT * STRATOSPHERE_BASE_TEMP) / (GRAVITY_ACCEL * AIR_MOLAR_MASS);
+
+    return TROPOPAUSE_BASE_ALTITUDE - (scale_factor * log_ratio);
+}
+
+static inline float calc_altitude_upper_stratosphere_msl(float pressure) {
+    float exponent = (-GAS_CONSTANT * UPPER_STRATOSPHERE_LAPSE_RATE) / (GRAVITY_ACCEL * AIR_MOLAR_MASS);
+    float pressure_ratio = pressure / STRATOSPHERE_MIDDLE_PRESSURE;
+    float power_term = pow(pressure_ratio, exponent) - 1;
+
+    return STRATOSPHERE_MIDDLE_BASE_ALTITUDE + (STRATOSPHERE_BASE_TEMP / UPPER_STRATOSPHERE_LAPSE_RATE) * power_term;
+}
+
+float bmp581_estimate_altitude_msl(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {
+    if (data->pressure > TROPOPAUSE_PRESSURE) {
+        return calc_altitude_troposphere_msl(data->pressure);
+    } else if (data->pressure > STRATOSPHERE_MIDDLE_PRESSURE) {
+        return calc_altitude_lower_stratosphere_msl(data->pressure);
+    } else {
+        return calc_altitude_upper_stratosphere_msl(data->pressure);
+    }
 }
 
 int8_t bmp581_get_power_mode(struct BMP581 *bmp581, enum bmp5_powermode *powermode) {

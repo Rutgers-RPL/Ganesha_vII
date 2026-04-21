@@ -52,6 +52,7 @@ static void testerCommonInit(MMC5983MA_Tester *tester,
     }
 
     MMC5983MA_init(&tester->mag);
+    // MMC5983MA_init(&tester->magnetometer);
     testerPrint(tester->huart, "MMC5983MA Tester (STM32H7 HAL)\r\n");
 }
 
@@ -125,11 +126,11 @@ static double calculateHeadingDegrees(double normalizedX, double normalizedY)
     return (normalizedX > 0.0) ? 270.0 : 90.0;
 }
 
-void MMC5983MA_Tester_Run(MMC5983MA_Tester *tester)
+bool MMC5983MA_Tester_Run(MMC5983MA_Tester *tester)
 {
     uint32_t now = HAL_GetTick();
     if ((now - tester->lastRunMs) < MMC5983MA_TEST_PERIOD_MS) {
-        return;
+        return false;
     }
     tester->lastRunMs = now;
 
@@ -139,7 +140,7 @@ void MMC5983MA_Tester_Run(MMC5983MA_Tester *tester)
         if (tester->statusLedPort != NULL) {
             HAL_GPIO_WritePin(tester->statusLedPort, tester->statusLedPin, GPIO_PIN_RESET);
         }
-        return;
+        return false;
     }
 
     int celsius = MMC5983MA_getTemperature(&tester->mag);
@@ -154,7 +155,7 @@ void MMC5983MA_Tester_Run(MMC5983MA_Tester *tester)
         if (tester->statusLedPort != NULL) {
             HAL_GPIO_WritePin(tester->statusLedPort, tester->statusLedPin, GPIO_PIN_RESET);
         }
-        return;
+        return false;
     }
 
     bool good = (currentX >= MMC5983MA_RAW_MIN) && (currentX <= MMC5983MA_RAW_MAX) &&
@@ -178,7 +179,7 @@ void MMC5983MA_Tester_Run(MMC5983MA_Tester *tester)
         if (tester->statusLedPort != NULL) {
             HAL_GPIO_WritePin(tester->statusLedPort, tester->statusLedPin, GPIO_PIN_RESET);
         }
-        return;
+        return false;
     }
 
     double normalizedX = ((double)currentX - 131072.0) / 131072.0;
@@ -201,4 +202,5 @@ void MMC5983MA_Tester_Run(MMC5983MA_Tester *tester)
     if (tester->statusLedPort != NULL) {
         HAL_GPIO_WritePin(tester->statusLedPort, tester->statusLedPin, GPIO_PIN_SET);
     }
+    return true;
 }

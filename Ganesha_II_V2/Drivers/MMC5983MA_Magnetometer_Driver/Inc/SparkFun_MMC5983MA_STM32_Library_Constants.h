@@ -34,7 +34,7 @@
 #define  INT_CTRL_2_REG  0x0b
 #define  INT_CTRL_3_REG  0x0c
 #define  PROD_ID_REG     0x2f
-#define  DUMMY           0x0
+#define  DUMMY           0x00
 #define  I2C_ADDR        0x30
 #define  PROD_ID         0x30
 

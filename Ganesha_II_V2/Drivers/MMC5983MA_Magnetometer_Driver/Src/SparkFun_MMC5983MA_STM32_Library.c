@@ -188,7 +188,7 @@ int MMC5983MA_getTemperature(SFE_MMC5983MA *dev)
     }
 
     /* Convert using the equation from the datasheet */
-    float temperature = -75.0f + ((float)result * (200.0f / 255.0f));
+    float temperature = -75.0f + ((float)result * 0.8f);
     return (int)temperature;
 }
 

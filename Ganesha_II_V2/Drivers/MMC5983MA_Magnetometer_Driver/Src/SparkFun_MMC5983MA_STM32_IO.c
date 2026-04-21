@@ -18,6 +18,7 @@
 
 #include "SparkFun_MMC5983MA_STM32_Library_Constants.h"
 #include "SparkFun_MMC5983MA_STM32_IO.h"
+#include <string.h>
 
 /* Read operations must have the most significant bit set for SPI */
 #define READ_REG(x) (0x80u | (x))
@@ -63,21 +64,19 @@ bool MMC5983MA_IO_isConnected(SFE_MMC5983MA_IO *io)
 
     if (io->useSPI)
     {
-        uint8_t txData = READ_REG(PROD_ID_REG);
-        uint8_t rxData = 0;
+        uint8_t txBuf[2] = { READ_REG(PROD_ID_REG), DUMMY };
+        uint8_t rxBuf[2] = { 0, 0 };
+        uint8_t test = PROD_ID;
 
-        HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_RESET);
+       HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_RESET);
 
-        if (HAL_SPI_Transmit(io->hspi, &txData, 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
-        {
-            uint8_t dummy = DUMMY;
-            if (HAL_SPI_TransmitReceive(io->hspi, &dummy, &rxData, 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
-            {
-                result = (rxData == PROD_ID);
-            }
-        }
+       if (HAL_SPI_TransmitReceive(io->hspi, txBuf, rxBuf, 2, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
+       {
+           result = (rxBuf[1] == PROD_ID);
+       }
 
-        HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);
+       HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);
+
     }
     else
     {
@@ -160,22 +159,21 @@ bool MMC5983MA_IO_writeMultipleBytes(SFE_MMC5983MA_IO *io, uint8_t registerAddre
 
 bool MMC5983MA_IO_readSingleByte(SFE_MMC5983MA_IO *io, uint8_t registerAddress, uint8_t *buffer)
 {
-    bool success = true;
+    bool success = false;
 
     if (io->useSPI)
     {
-        uint8_t txData = READ_REG(registerAddress);
+        uint8_t txBuf[2] = { READ_REG(registerAddress), DUMMY };
+        uint8_t rxBuf[2] = { 0, 0 };
 
+        HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);
+        HAL_Delay(500);
         HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_RESET);
 
-        if (HAL_SPI_Transmit(io->hspi, &txData, 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
+        if (HAL_SPI_TransmitReceive(io->hspi, txBuf, rxBuf, 2, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
         {
-            uint8_t dummy = DUMMY;
-            success = (HAL_SPI_TransmitReceive(io->hspi, &dummy, buffer, 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK);
-        }
-        else
-        {
-            success = false;
+            *buffer = rxBuf[1];
+            success = true;
         }
 
         HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);
@@ -192,21 +190,26 @@ bool MMC5983MA_IO_readSingleByte(SFE_MMC5983MA_IO *io, uint8_t registerAddress, 
 
 bool MMC5983MA_IO_readMultipleBytes(SFE_MMC5983MA_IO *io, uint8_t registerAddress, uint8_t *buffer, uint8_t packetLength)
 {
-    bool success = true;
+    bool success = false;
 
     if (io->useSPI)
     {
-        uint8_t txData = READ_REG(registerAddress);
+        uint8_t txBuf[32];
+        uint8_t rxBuf[32];
+
+        txBuf[0] = READ_REG(registerAddress);
+        for (uint8_t i = 1; i <= packetLength; i++)
+        {
+            txBuf[i] = DUMMY;
+        }
+        memset(rxBuf, 0, sizeof(rxBuf));
 
         HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_RESET);
 
-        if (HAL_SPI_Transmit(io->hspi, &txData, 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
+        if (HAL_SPI_TransmitReceive(io->hspi, txBuf, rxBuf, packetLength + 1, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK)
         {
-            success = (HAL_SPI_Receive(io->hspi, buffer, packetLength, MMC5983MA_HAL_TIMEOUT_MS) == HAL_OK);
-        }
-        else
-        {
-            success = false;
+            memcpy(buffer, &rxBuf[1], packetLength);
+            success = true;
         }
 
         HAL_GPIO_WritePin(io->csPort, io->csPin, GPIO_PIN_SET);

@@ -14,7 +14,7 @@ typedef enum {
 } MMC5983MA_TesterBus;
 
 typedef struct {
-    SFE_MMC5983MA magnetometer;
+    SFE_MMC5983MA mag;
     MMC5983MA_TesterBus busType;
 
     I2C_HandleTypeDef *hi2c;
@@ -45,7 +45,7 @@ void MMC5983MA_Tester_InitSPI(MMC5983MA_Tester *tester,
                               GPIO_TypeDef *statusLedPort,
                               uint16_t statusLedPin);
 
-void MMC5983MA_Tester_Run(MMC5983MA_Tester *tester);
+bool MMC5983MA_Tester_Run(MMC5983MA_Tester *tester);
 
 #ifdef __cplusplus
 }

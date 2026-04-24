@@ -8,8 +8,9 @@
 #include "bmi088.h"
 #include "bmi08_defs.h"
 #include "bmi08.h"
-#include "stm32h7xx_hal.h"
 #include "bmi08x.h"
+#include "stm32h7xx_hal.h"
+#include "main.h"
 
 #include <stdint.h>
 #include <math.h>
@@ -67,7 +68,7 @@ BMI08_INTF_RET_TYPE bmi088_write_spi(uint8_t reg_addr, const uint8_t *reg_data, 
 }
 
 void bmi088_delay_us(uint32_t period, void *intf_ptr) {
-	HAL_Delay(ceil((double)(period)/(1000.0)));
+	delay_us(period);
 };
 
 int8_t bmi088_init(struct BMI088* bmi, SPI_HandleTypeDef* spi_handle) {

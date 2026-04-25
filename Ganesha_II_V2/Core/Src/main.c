@@ -170,7 +170,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }
 
-inline uint32_t get_time_us() {
+uint32_t get_time_us() {
 	return __HAL_TIM_GET_COUNTER(&htim2);
 }
 
@@ -226,6 +226,10 @@ int main(void)
   MX_CRC_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+
+  if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+    Error_Handler();
+  }
 
   GPS_Init();
 

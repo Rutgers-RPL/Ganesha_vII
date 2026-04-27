@@ -10,7 +10,7 @@
 #include "bmi08.h"
 #include "bmi08x.h"
 #include "stm32h7xx_hal.h"
-#include "main.h"
+#include "us_timer.h"
 
 #include <stdint.h>
 #include <math.h>

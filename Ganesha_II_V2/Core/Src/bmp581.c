@@ -2,7 +2,7 @@
 #include "bmp5.h"
 #include "bmp5_defs.h"
 #include "stm32h7xx_hal.h"
-#include "main.h"
+#include "us_timer.h"
 
 #include <stdint.h>
 #include <math.h>

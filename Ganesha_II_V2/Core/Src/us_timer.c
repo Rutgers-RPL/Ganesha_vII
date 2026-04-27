@@ -5,7 +5,14 @@
  *      Author: Dhruv Shah
  */
 
+#include <stdint.h>
 #include "main.h"
+
+void us_timer_init() {
+	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+		Error_Handler();
+	}
+}
 
 uint32_t get_time_us() {
 	return __HAL_TIM_GET_COUNTER(&htim2);

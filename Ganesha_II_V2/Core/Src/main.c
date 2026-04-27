@@ -217,9 +217,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-  if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
-    Error_Handler();
-  }
+  us_timer_init();
 
   GPS_Init();
 

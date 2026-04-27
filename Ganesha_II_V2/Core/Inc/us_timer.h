@@ -8,6 +8,9 @@
 #ifndef INC_US_TIMER_H_
 #define INC_US_TIMER_H_
 
+#include <stdint.h>
+
+void us_timer_init();
 uint32_t get_time_us();
 void delay_us(uint32_t us);
 

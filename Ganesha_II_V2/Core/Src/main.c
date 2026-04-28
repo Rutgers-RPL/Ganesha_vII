@@ -27,6 +27,7 @@
 #include "bmi088.h"
 #include "CD-PA1616S.h"
 #include "bmp581.h"
+#include "mmc5983ma.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -146,20 +147,28 @@ struct bmi08_sensor_data bmi088_gyro_data;
 volatile uint8_t accel_ready;
 volatile uint8_t gyro_ready;
 
+uint8_t mmc5983ma_init_ok = 0;
+struct MMC5983MA mmc5983ma;
+struct mmc5983ma_mag_data mag_data;
+volatile uint8_t mag_ready;
+
 void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 	if (pin == BMI088_GYRO_INT_PIN) {
 		if (bmi088_init_ok == 0) return;
 
-		if (!gyro_ready){
 			gyro_ready = 1;
-		}
 
 	} else if (pin == BMI088_ACCEL_INT_PIN) {
 		if (bmi088_init_ok == 0) return;
 
-		if (!accel_ready){
 			accel_ready = 1;
-		}
+
+	} else if (pin == MAG_INT_Pin) {
+		if (mmc5983ma_init_ok == 0) return;
+
+
+		mag_ready = 1;
+		// Set data ready flag in driver structure
 
 	}
 
@@ -232,6 +241,23 @@ int main(void)
 	  bmp581_init_ok = 1;
   }
 
+
+  uint8_t mmc5983ma_init_try_count = 1;
+
+  // MMC5983MA requires 5ms power-up time before first communication
+  HAL_Delay(10);
+
+  while (mmc5983ma_init_ok == 0 && mmc5983ma_init_try_count <= 3) {
+	  if (mmc5983ma_init(&mmc5983ma, &hspi1, 1) == HAL_OK) {  // Use 18-bit mode for higher resolution
+		  mmc5983ma_init_ok = 1;
+		  mmc5983ma_enable_interrupt(&mmc5983ma);  // Enable measurement done interrupt
+		  break;
+	  } else {
+		  mmc5983ma_init_try_count++;
+		  HAL_Delay(500);
+	  }
+  }
+
   short magic = 0xBEEF;
   packet.magic = magic;
 
@@ -266,6 +292,8 @@ int main(void)
 
       __HAL_UART_CLEAR_OREFLAG(&huart5);
       HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+
+
 
   /* USER CODE END 2 */
 
@@ -304,6 +332,18 @@ int main(void)
 
 		  accel_ready = 0;
 		  gyro_ready = 0;
+
+	  }
+
+	  if (mag_ready){
+
+		  mmc5983ma_read_mag_data(&mmc5983ma, &mag_data);
+
+		  packet.gauss_x = mag_data.x_gauss;
+		  packet.gauss_y = mag_data.y_gauss;
+		  packet.gauss_z = mag_data.z_gauss;
+
+		  mag_ready = 0;
 
 	  }
 
@@ -489,8 +529,8 @@ static void MX_SPI1_Init(void)
   /* SPI1 parameter configuration*/
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi1.Init.Direction = SPI_DIRECTION_1LINE;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
@@ -868,7 +908,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : MAG_INT_Pin */
   GPIO_InitStruct.Pin = MAG_INT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MAG_INT_GPIO_Port, &GPIO_InitStruct);
 
@@ -913,6 +953,9 @@ static void MX_GPIO_Init(void)
 
   HAL_NVIC_SetPriority(ACC_INT_EXTI_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(ACC_INT_EXTI_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
   HAL_NVIC_SetPriority(Btn_Interrupt_EXTI_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(Btn_Interrupt_EXTI_IRQn);

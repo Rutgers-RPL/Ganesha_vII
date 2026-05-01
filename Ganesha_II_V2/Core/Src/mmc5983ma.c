@@ -9,9 +9,6 @@
 #include "main.h"
 #include <string.h>
 
-// CS pin definitions
-#define MMC5983MA_CS_PIN    MAG_CS_Pin
-#define MMC5983MA_CS_PORT   MAG_CS_GPIO_Port
 
 /**
  * @brief Read from MMC5983MA register(s) via SPI (3-wire half-duplex)
@@ -30,12 +27,11 @@ HAL_StatusTypeDef mmc5983ma_read_register(struct MMC5983MA* mmc, uint8_t reg_add
         tx_buffer[i] = 0x00;
     }
 
-    HAL_GPIO_WritePin(MMC5983MA_CS_PORT, MMC5983MA_CS_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MAG_CS_GPIO_Port, MAG_CS_Pin, GPIO_PIN_RESET);
 
-    // For 3-wire SPI: use TransmitReceive to handle direction switching
     ret = HAL_SPI_TransmitReceive(mmc->spi_handle, tx_buffer, rx_buffer, len + 1, HAL_MAX_DELAY);
 
-    HAL_GPIO_WritePin(MMC5983MA_CS_PORT, MMC5983MA_CS_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(MAG_CS_GPIO_Port, MAG_CS_Pin, GPIO_PIN_SET);
 
     if (ret == HAL_OK) {
         // Copy received data (skip first byte which is during address transmission)
@@ -60,13 +56,13 @@ HAL_StatusTypeDef mmc5983ma_write_register(struct MMC5983MA* mmc, uint8_t reg_ad
     tx_buffer[1] = data;
     
     // Pull CS low
-    HAL_GPIO_WritePin(MMC5983MA_CS_PORT, MMC5983MA_CS_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MAG_CS_GPIO_Port, MAG_CS_Pin, GPIO_PIN_RESET);
     
     // Send register address and data
     ret = HAL_SPI_Transmit(mmc->spi_handle, tx_buffer, 2, HAL_MAX_DELAY);
     
     // Pull CS high
-    HAL_GPIO_WritePin(MMC5983MA_CS_PORT, MMC5983MA_CS_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(MAG_CS_GPIO_Port, MAG_CS_Pin, GPIO_PIN_SET);
     
     return ret;
 }
@@ -85,16 +81,10 @@ HAL_StatusTypeDef mmc5983ma_init(struct MMC5983MA* mmc, SPI_HandleTypeDef* spi_h
     mmc->ctrl0_shadow = 0;
     
     // Set CS high initially
-    HAL_GPIO_WritePin(MMC5983MA_CS_PORT, MMC5983MA_CS_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(MAG_CS_GPIO_Port, MAG_CS_Pin, GPIO_PIN_SET);
     
     // Wait for power-up (10ms typical)
     HAL_Delay(10);
-    
-    // Enable 3-wire SPI mode
-    ret = mmc5983ma_write_register(mmc, MMC5983MA_REG_CTRL3, MMC5983MA_CTRL3_SPI_3WIRE);
-    if (ret != HAL_OK) {
-        return ret;
-    }
     
     // Verify product ID
     ret = mmc5983ma_read_product_id(mmc, &product_id);

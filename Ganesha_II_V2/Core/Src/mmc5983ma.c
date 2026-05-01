@@ -1,8 +1,8 @@
 /*
  * mmc5983ma.c
  *
- *  Created on: Jan 2, 2025
- *      Author: SEB Assistant
+ *  Created on: May 1, 2025
+ *      Author: Mahir Shah (mahir.shah@rutgers.edu)
  */
 
 #include "mmc5983ma.h"
@@ -10,9 +10,7 @@
 #include <string.h>
 
 
-/**
- * @brief Read from MMC5983MA register(s) via SPI (3-wire half-duplex)
- */
+
 HAL_StatusTypeDef mmc5983ma_read_register(struct MMC5983MA* mmc, uint8_t reg_addr, uint8_t* data, uint16_t len) {
     HAL_StatusTypeDef ret;
     uint8_t tx_buffer[9];  // 1 address byte + up to 8 data bytes

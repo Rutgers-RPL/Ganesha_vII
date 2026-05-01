@@ -32,6 +32,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "STRUCTS.h"
+#include "us_timer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -330,6 +331,7 @@ int main(void)
 	  }
 
 	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
+	  packet.time_us = get_time_us();
 
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 

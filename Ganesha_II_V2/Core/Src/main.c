@@ -125,16 +125,15 @@ if(huart->Instance == UART5){
 uint32_t calculate_checksum(const uint8_t *data, size_t length) {
     return HAL_CRC_Calculate(&hcrc, (uint32_t *)data, length);
 }
+
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-  if (htim == &htim2) {
-	  if (camera_fired == 1){
-	      //  Timer Stopped
-	      HAL_TIM_Base_Stop_IT(&htim1);
-	      // Camera Stopped
-	      HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-	      camera_fired ^= 1;
-	  }
+  if (camera_fired == 1){
+    //  Timer Stopped
+    HAL_TIM_Base_Stop_IT(&htim1);
+    // Camera Stopped
+    HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+    camera_fired ^= 1;
   }
 
 	// Timer Notes

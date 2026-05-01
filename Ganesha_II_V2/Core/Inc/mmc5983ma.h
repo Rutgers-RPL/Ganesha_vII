@@ -1,8 +1,8 @@
 /*
  * mmc5983ma.h
  *
- *  Created on: Jan 2, 2025
- *      Author: SEB Assistant
+ *  Created on: May 1, 2025
+ *      Author: Mahir Shah (mahir.shah@rutgers.edu)
  */
 
 #ifndef INC_MMC5983MA_H_
@@ -11,11 +11,6 @@
 #include "stm32h7xx_hal.h"
 #include <stdint.h>
 
-/* MMC5983MA Pin Definitions */
-#define MMC5983MA_CS_PIN     GPIO_PIN_4
-#define MMC5983MA_INT_PIN    GPIO_PIN_4
-#define MMC5983MA_CS_PORT    GPIOA
-#define MMC5983MA_INT_PORT   GPIOC
 
 /* MMC5983MA Register Map */
 #define MMC5983MA_REG_XOUT0          0x00

@@ -32,6 +32,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "STRUCTS.h"
+#include "orientation_estimator.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -169,6 +170,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 
 	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }
+
+struct Orientation_Estimator estimator;
+uint8_t estimator_init = 0;
 
 /* USER CODE END 0 */
 
@@ -308,6 +312,23 @@ int main(void)
 		  packet.angular_velocity_x_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.x);
 		  packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
 		  packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
+
+		  if (!estimator_init) {
+			  orientation_estimator_reset_from_accel(&estimator, packet.acceleration_x_mss, packet.acceleration_y_mss, packet.acceleration_z_mss);
+			  estimator_init = 1;
+		  }
+
+		  orientation_estimator_add_gyro_reading(
+			  &estimator,
+			  packet.angular_velocity_x_rads,
+			  packet.angular_velocity_y_rads,
+			  packet.angular_velocity_z_rads
+		  );
+
+		  packet.w = orientation_estimator_get_w(&estimator);
+		  packet.x = orientation_estimator_get_x(&estimator);
+		  packet.y = orientation_estimator_get_y(&estimator);
+		  packet.z = orientation_estimator_get_z(&estimator);
 
 		  accel_ready = 0;
 		  gyro_ready = 0;

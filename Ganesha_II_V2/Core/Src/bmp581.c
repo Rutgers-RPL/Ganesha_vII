@@ -1,4 +1,5 @@
 #include "bmp581.h"
+
 #include "bmp5.h"
 #include "bmp5_defs.h"
 #include "stm32h7xx_hal.h"
@@ -23,7 +24,7 @@ BMP5_INTF_RET_TYPE write_i2c(uint8_t reg_addr, const uint8_t *reg_data, uint32_t
 }
 
 void delay(uint32_t period, void *intf_ptr) {
-	delay_us(period);
+	HAL_Delay(ceil((double)(period)/(1000.0)));
 }
 
 int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)

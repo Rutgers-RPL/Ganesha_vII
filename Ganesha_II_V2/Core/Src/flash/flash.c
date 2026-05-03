@@ -66,7 +66,7 @@ int flash_mount(struct flash_dev *flash, const struct lfs_config *config)
 		lfs_mount(&(flash->lfs), config);
 		return flash_boot_count(flash, true);
 	}
-	/* flash_boot_count(flash, true); */
+	flash_boot_count(flash, true);
 	return err;
 }
 

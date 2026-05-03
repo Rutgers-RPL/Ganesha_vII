@@ -112,7 +112,7 @@ int gd5f1gq5xe_write(const uint32_t page, const uint16_t col, const void *buffer
 	}
 	chip_deselect();
 	
-	HAL_Delay(5);
+	HAL_Delay(1);
 	return 0;
 }
 
@@ -136,7 +136,7 @@ int gd5f1gq5xe_erase(const uint32_t page)
 	}
 	chip_deselect();
 
-	HAL_Delay(25);
+	HAL_Delay(1);
 	return 0;
 }
 

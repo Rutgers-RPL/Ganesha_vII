@@ -165,21 +165,26 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 }
 
-
 uint32_t calculate_checksum(const uint8_t *data, size_t length)
 {
   return HAL_CRC_Calculate(&hcrc, (uint32_t *)data, length);
 }
+
+// TODO: Remove after Matt finishes his launch
+int camera_timer_counter = 0;
+
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-  if (camera_fired == 1){
-    //  Timer Stopped
-    HAL_TIM_Base_Stop_IT(&htim1);
-    // Camera Stopped
-    HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-    camera_fired ^= 1;
+  if (camera_fired == 1) {
+    ++camera_timer_counter;
+    if (camera_timer_counter >= 2) {
+      //  Timer Stopped
+      HAL_TIM_Base_Stop_IT(&htim1);
+      // Camera Stopped
+      HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+      camera_fired ^= 1;
+    }
   }
-
   // Timer Notes
   // Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 0.5s
   //Prescaler = 999, Counter = 7999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 1s
@@ -256,12 +261,13 @@ int main(void)
   MX_SPI2_Init();
   MX_TIM1_Init();
   MX_CRC_Init();
-  /* MX_USB_DEVICE_Init(); */
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   GPS_Init();
 
   uint32_t prev_baro_read_time = HAL_GetTick();
+  uint32_t prev_flash_write_time = HAL_GetTick();
   
   uint8_t bmi088_init_try_count = 1;
 
@@ -288,14 +294,14 @@ int main(void)
 
   flash_init(&flash, GD5F1GQ5XE);
   flash_mount(&flash, &flash_cfg);
-  MX_USB_DEVICE_Init();
-  /* uint32_t boot_count = flash_boot_count(&flash, false); */
-  /* lfs_file_t packet_file; */
+  /* MX_USB_DEVICE_Init(); */
+  uint32_t boot_count = flash_boot_count(&flash, false);
+  lfs_file_t packet_file;
+  flash_open(&flash, &packet_file, "packets");
 
   __HAL_UART_CLEAR_OREFLAG(&huart5);
   HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 
-  /* flash_open(&flash, &packet_file, "packets"); */
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -347,11 +353,13 @@ int main(void)
     packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
     HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
-    /* flash_append(&flash, &packet_file, (uint8_t*) &packet, sizeof(packet)); */
-
     HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+    if (current_time - prev_flash_write_time >= 10) {
+      prev_flash_write_time = current_time;
+      flash_append(&flash, &packet_file, (uint8_t*) &packet, sizeof(packet));
+    }
   }
-  /* flash_close(&flash, &packet_file); */
+  flash_close(&flash, &packet_file);
   flash_unmount(&flash);
   /* USER CODE END 3 */
 }
@@ -658,7 +666,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 18310-1;
+  htim1.Init.Prescaler = 65535;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV2;

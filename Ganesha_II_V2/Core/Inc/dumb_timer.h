@@ -9,9 +9,10 @@
 #define SRC_DUMB_TIMER_H_
 
 #include <stdint.h>
+#include <math.h>
 
-#define SEC_TO_MS(sec) ((sec) * 1000)
-#define MIN_TO_MS(min) (SEC_TO_MS((min) * 60))
+#define SEC_TO_MS(sec) ((uint32_t)roundf((float)(sec) * 1000.0f))
+#define MIN_TO_MS(min) ((uint32_t)roundf((float)(min) * 60000.0f))
 
 struct Dumb_Timer {
 	uint32_t start_time_ms;

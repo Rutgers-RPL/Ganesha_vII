@@ -13,6 +13,7 @@
 
 #define SEC_TO_MS(sec) ((uint32_t)roundf((float)(sec) * 1000.0f))
 #define MIN_TO_MS(min) ((uint32_t)roundf((float)(min) * 60000.0f))
+#define HRS_TO_MS(hrs) ((uint32_t)roundf((float)(hrs) * 3600000.0f))
 
 struct Dumb_Timer {
 	uint32_t start_time_ms;

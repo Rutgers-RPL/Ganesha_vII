@@ -224,7 +224,7 @@ int main(void)
 
   GPS_Init();
 
-  dumb_timer_init(&camera_timer, MIN_TO_MS(1));
+  dumb_timer_init(&camera_timer, HRS_TO_MS(2));
 
   uint32_t prev_baro_read_time = HAL_GetTick();
 

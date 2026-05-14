@@ -33,6 +33,8 @@
 #include <stdint.h>
 #include "STRUCTS.h"
 #include "orientation_estimator.h"
+#include "dumb_timer.h"
+#include "us_timer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -101,6 +103,7 @@ uint8_t camera_buffer[4];
 uint8_t camera_fired = 0;
 ganesha_II_packet packet;
 
+struct Dumb_Timer camera_timer;
 
 struct BMP581 bmp581;
 struct bmp5_sensor_data bmp_data;
@@ -111,7 +114,8 @@ if(huart->Instance == UART5){
 	if(memcmp(camera_buffer, "FIRE", 4) == 0){
 			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
 			// Timer started
-			HAL_TIM_Base_Start_IT(&htim1);
+			dumb_timer_clear(&camera_timer);
+			dumb_timer_start(&camera_timer);
 			camera_fired ^= 1;
 
 		}
@@ -126,17 +130,16 @@ if(huart->Instance == UART5){
 uint32_t calculate_checksum(const uint8_t *data, size_t length) {
     return HAL_CRC_Calculate(&hcrc, (uint32_t *)data, length);
 }
+
 // Triggers when the timer has run, shutdowns the camera
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-  if (htim == &htim2) {
-	  if (camera_fired == 1){
-	      //  Timer Stopped
-	      HAL_TIM_Base_Stop_IT(&htim1);
-	      // Camera Stopped
-	      HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-	      camera_fired ^= 1;
-	  }
-  }
+//  if (camera_fired == 1){
+//    //  Timer Stopped
+//    HAL_TIM_Base_Stop_IT(&htim1);
+//    // Camera Stopped
+//    HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+//    camera_fired ^= 1;
+//  }
 
 	// Timer Notes
 	// Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 0.5s
@@ -224,6 +227,8 @@ int main(void)
   us_timer_init();
 
   GPS_Init();
+
+  dumb_timer_init(&camera_timer, HRS_TO_MS(2));
 
   uint32_t prev_baro_read_time = HAL_GetTick();
 
@@ -345,6 +350,13 @@ int main(void)
 	  packet.barometer_hMSL_m = bmp581_estimate_altitude_msl(&bmp581, &bmp_data);
 	  packet.temperature_c = bmp_data.temperature;
 
+	  if (dumb_timer_done(&camera_timer)) {
+		  dumb_timer_clear(&camera_timer);
+
+		  HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+		  camera_fired ^= 1;
+	  }
+
 	  if (camera_fired == 1){
 		  packet.status = 1;
 	  } else {
@@ -352,6 +364,7 @@ int main(void)
 	  }
 
 	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
+	  packet.time_us = get_time_us();
 
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 

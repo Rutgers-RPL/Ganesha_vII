@@ -331,9 +331,9 @@ int main(void)
 		  );
 
 		  packet.w = orientation_estimator_get_w(&estimator);
-		  packet.x = orientation_estimator_get_x(&estimator);
-		  packet.y = orientation_estimator_get_y(&estimator);
-		  packet.z = orientation_estimator_get_z(&estimator);
+		  packet.x = -orientation_estimator_get_x(&estimator);
+		  packet.y = -orientation_estimator_get_y(&estimator);
+		  packet.z = -orientation_estimator_get_z(&estimator);
 
 		  accel_ready = 0;
 		  gyro_ready = 0;
@@ -362,6 +362,8 @@ int main(void)
 	  } else {
 		  packet.status = 0;
 	  }
+
+	  packet.kf_position_m = bmp_data.pressure;
 
 	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 	  packet.time_us = get_time_us();

@@ -365,8 +365,8 @@ int main(void)
 
 	  packet.kf_position_m = bmp_data.pressure;
 
-	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 	  packet.time_us = get_time_us();
+	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
 
 	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 

@@ -67,7 +67,7 @@
 /*---------- -----------*/
 #define USBD_MAX_NUM_CONFIGURATION     1U
 /*---------- -----------*/
-#define USBD_MAX_STR_DESC_SIZ     2048U
+#define USBD_MAX_STR_DESC_SIZ     4096U
 /*---------- -----------*/
 #define USBD_DEBUG_LEVEL     0U
 /*---------- -----------*/
@@ -75,7 +75,7 @@
 /*---------- -----------*/
 #define USBD_SELF_POWERED     1U
 /*---------- -----------*/
-#define MSC_MEDIA_PACKET     2048U
+#define MSC_MEDIA_PACKET     4096U
 
 /****************************************/
 /* #define for FS and HS identification */

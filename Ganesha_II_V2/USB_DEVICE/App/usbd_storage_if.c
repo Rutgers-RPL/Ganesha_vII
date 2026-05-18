@@ -64,7 +64,6 @@
 
 #define STORAGE_LUN_NBR                  1
 #define STORAGE_BLK_NBR                  0x10000
-/* #define STORAGE_BLK_NBR                  0x1000 */
 #define STORAGE_BLK_SIZ                  0x200
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
@@ -245,11 +244,10 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
   /* UNUSED(buf); */
   /* UNUSED(blk_addr); */
   /* UNUSED(blk_len); */
-
   uint32_t total_offset = blk_addr * STORAGE_BLK_SIZ;
   uint32_t total_size   = blk_len * STORAGE_BLK_SIZ;
-  uint32_t page = total_offset / GD5F_PAGE_SIZE; 
-  uint16_t col  = total_offset % GD5F_PAGE_SIZE; 
+  uint32_t page = total_offset / GD5F_PAGE_SIZE;
+  uint16_t col  = total_offset % GD5F_PAGE_SIZE;
   gd5f1gq5xe_read(page, col, buf, total_size);
   return (USBD_OK);
   /* USER CODE END 6 */

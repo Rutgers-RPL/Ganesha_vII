@@ -49,6 +49,8 @@ Core/Src/bmi08xa.c \
 Core/Src/bmi088.c \
 Core/Src/bmp5.c \
 Core/Src/bmp581.c \
+Core/Src/dumb_timer.c \
+Core/Src/us_timer.c \
 Core/Src/stm32h7xx_it.c \
 Core/Src/stm32h7xx_hal_msp.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cortex.c \

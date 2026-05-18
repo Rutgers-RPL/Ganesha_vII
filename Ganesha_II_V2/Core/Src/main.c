@@ -44,7 +44,6 @@
 #include "us_timer.h"
 
 #include "lfs.h"
-#include "lfs_port.h"
 #include "lfs_util.h"
 
 /* USER CODE END Includes */

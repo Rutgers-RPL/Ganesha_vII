@@ -136,7 +136,7 @@ int gd5f1gq5xe_erase(const uint32_t page)
 	}
 	chip_deselect();
 
-	HAL_Delay(1);
+	HAL_Delay(4);
 	return 0;
 }
 

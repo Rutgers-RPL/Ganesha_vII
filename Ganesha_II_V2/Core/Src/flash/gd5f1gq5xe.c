@@ -52,7 +52,7 @@ int gd5f1gq5xe_read(const uint32_t page, const uint16_t col, void *buffer, const
 		return 1;
 	}
 	chip_deselect();
-	/* HAL_Delay(1); */
+	HAL_Delay(2);
 
 	// Read data from cache requires the op code followed by four dummy bits
 	// (0) and then a 11 bit address. It also needs dummy bytes after.
@@ -112,7 +112,7 @@ int gd5f1gq5xe_write(const uint32_t page, const uint16_t col, const void *buffer
 	}
 	chip_deselect();
 	
-	HAL_Delay(1);
+	HAL_Delay(2);
 	return 0;
 }
 

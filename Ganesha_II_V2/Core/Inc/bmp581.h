@@ -28,6 +28,7 @@ struct BMP581 {
 	struct bmp5_osr_odr_press_config odr_config;
 	struct bmp5_int_source_select int_config;
 	I2C_HandleTypeDef *hi2c;
+	float sea_level_pressure;
 };
 
 BMP5_INTF_RET_TYPE read_i2c(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr);
@@ -36,5 +37,6 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle);
 int8_t bmp581_update_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data);
 int8_t bmp581_get_power_mode(struct BMP581 *bmp581, enum bmp5_powermode *powermode);
 float bmp581_estimate_altitude_msl(struct BMP581 *bmp581, struct bmp5_sensor_data *data);
+void bmp581_calibrate(struct BMP581 *bmp581, struct bmp5_sensor_data *data, float gps_hMSL_m);
 
 #endif

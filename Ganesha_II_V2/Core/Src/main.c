@@ -177,6 +177,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 struct Orientation_Estimator estimator;
 uint8_t estimator_init = 0;
 
+uint8_t bmi_calibrated = 0;
 /* USER CODE END 0 */
 
 /**
@@ -346,6 +347,11 @@ int main(void)
 	      prev_baro_read_time = current_time;
 		  bmp581_update_data(&bmp581, &bmp_data);
 	  }
+
+      if (bmi_calibrated == 0 && gps_packet.gps_hMSL_m) {
+    	  bmi_calibrated = 1;
+    	  bmp581_calibrate(&bmp581, &bmp_data, gps_packet.gps_hMSL_m);
+      }
 
 	  packet.barometer_hMSL_m = bmp581_estimate_altitude_msl(&bmp581, &bmp_data);
 	  packet.temperature_c = bmp_data.temperature;

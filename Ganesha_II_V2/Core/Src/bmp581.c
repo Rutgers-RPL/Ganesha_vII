@@ -31,6 +31,8 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 {
 	int8_t result = BMP5_OK;
 
+	bmp581->sea_level_pressure = 0;
+
 	// Use I2C by default, since that is wired on our end
 	bmp581->hi2c = handle;
 	bmp581->device.intf = BMP5_I2C_INTF;
@@ -44,7 +46,6 @@ int8_t bmp581_init(struct BMP581 *bmp581, I2C_HandleTypeDef *handle)
 	bmp581->int_config.fifo_full_en = BMP5_DISABLE;
 	bmp581->int_config.fifo_thres_en = BMP5_DISABLE;
 	bmp581->int_config.oor_press_en = BMP5_DISABLE;
-
 
 	bmp5_soft_reset(&(bmp581->device));
 
@@ -80,9 +81,9 @@ int8_t bmp581_update_data(struct BMP581 *bmp581, struct bmp5_sensor_data *data)
 	return bmp5_get_sensor_data(data, &(bmp581->odr_config), &(bmp581->device));
 }
 
-static inline float calc_altitude_troposphere_msl(float pressure) {
+static inline float calc_altitude_troposphere_msl(float pressure, float sea_level_pressure) {
     float exponent = (-GAS_CONSTANT * TROPOSPHERE_LAPSE_RATE) / (GRAVITY_ACCEL * AIR_MOLAR_MASS);
-    float pressure_ratio = pressure / STANDARD_SEA_LEVEL_PRESSURE;
+    float pressure_ratio = pressure / sea_level_pressure;
     float power_term = powf(pressure_ratio, exponent) - 1;
 
     return (STANDARD_SEA_LEVEL_TEMP / TROPOSPHERE_LAPSE_RATE) * power_term;
@@ -104,8 +105,10 @@ static inline float calc_altitude_upper_stratosphere_msl(float pressure) {
 }
 
 float bmp581_estimate_altitude_msl(struct BMP581 *bmp581, struct bmp5_sensor_data *data) {
-    if (data->pressure > TROPOPAUSE_PRESSURE) {
-        return calc_altitude_troposphere_msl(data->pressure);
+	if (bmp581->sea_level_pressure == 0) {
+		return 0.0f;
+	} else if (data->pressure > TROPOPAUSE_PRESSURE) {
+        return calc_altitude_troposphere_msl(data->pressure, bmp581->sea_level_pressure);
     } else if (data->pressure > STRATOSPHERE_MIDDLE_PRESSURE) {
         return calc_altitude_lower_stratosphere_msl(data->pressure);
     } else {
@@ -115,4 +118,10 @@ float bmp581_estimate_altitude_msl(struct BMP581 *bmp581, struct bmp5_sensor_dat
 
 int8_t bmp581_get_power_mode(struct BMP581 *bmp581, enum bmp5_powermode *powermode) {
 	return bmp5_get_power_mode(powermode, &(bmp581->device));
+}
+
+void bmp581_calibrate(struct BMP581 *bmp581, struct bmp5_sensor_data *data, float gps_hMSL_m) {
+	float base = (STANDARD_SEA_LEVEL_TEMP + TROPOSPHERE_LAPSE_RATE * gps_hMSL_m) / STANDARD_SEA_LEVEL_TEMP;
+    float power = GRAVITY_ACCEL * AIR_MOLAR_MASS / (GAS_CONSTANT * TROPOSPHERE_LAPSE_RATE);
+    bmp581->sea_level_pressure = data->pressure * powf(base, power);
 }

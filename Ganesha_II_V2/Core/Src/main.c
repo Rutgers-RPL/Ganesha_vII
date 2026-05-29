@@ -24,6 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usbd_cdc_if.h"
 #include "bmi08_defs.h"
 #include "bmi088.h"
 #include "CD-PA1616S.h"
@@ -87,32 +88,32 @@ DMA_HandleTypeDef hdma_uart8_rx;
 //uint8_t gps_dma_buffer[BUFFER_SIZE];
 
 struct flash_dev flash;
+lfs_file_t packet_file;
+bool flash_enabled = true;
 
 static int flash_sync(const struct lfs_config *c)
 {
-  return 0;
+  return LFS_ERR_OK;
 }
 
 static int lfs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t offset,
-                    void *location, lfs_size_t size)
+                    void *data, lfs_size_t size)
 {
-  uint32_t page = block * GD5F_PAGES_PER_BLOCK + (offset / GD5F_PAGE_SIZE);
-  uint16_t col = offset % GD5F_PAGE_SIZE;
-  return gd5f1gq5xe_read(page, col, location, size);
+  if (!gd5f1gq5xe_read(block, offset, data, size)) return LFS_ERR_IO;
+  return LFS_ERR_OK;
 }
 
 static int lfs_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t offset,
                     const void *data, lfs_size_t size)
 {
-  uint32_t page = block * GD5F_PAGES_PER_BLOCK + (offset / GD5F_PAGE_SIZE);
-  uint16_t col = offset % GD5F_PAGE_SIZE;
-  return gd5f1gq5xe_write(page, col, data, size);
+  if (!gd5f1gq5xe_write(block, offset, data, size)) return LFS_ERR_IO;
+  return LFS_ERR_OK;
 }
 
 static int lfs_erase(const struct lfs_config *c, lfs_block_t block)
 {
-  uint32_t page = block * GD5F_PAGES_PER_BLOCK;
-  return gd5f1gq5xe_erase(page);
+  if (!gd5f1gq5xe_erase(block)) return LFS_ERR_IO;
+  return LFS_ERR_OK;
 }
 
 static const struct lfs_config flash_cfg = {
@@ -176,6 +177,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   }
   __HAL_UART_CLEAR_OREFLAG(&huart5);
   HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+}
+
+void handle_usb_cdc(uint8_t* buf, uint32_t len)
+{
+  if (memcpy(buf, "PING", len) == 0) {
+    const char msg[] = "Hello!";
+    CDC_Transmit_FS(msg, sizeof(msg));
+  } else if (memcmp(buf, "PACKET", len) == 0) {
+    uint8_t bytes[2048];
+    lfs_ssize_t bytes_read;
+
+    lfs_file_seek(&(flash.lfs), &packet_file, 0, LFS_SEEK_SET);
+    while ((bytes_read = lfs_file_read(&(flash.lfs), &packet_file, bytes, sizeof(bytes))) > 0)
+      CDC_Transmit_FS(bytes, sizeof(bytes));
+  }
 }
 
 uint32_t calculate_checksum(const uint8_t *data, size_t length)
@@ -273,7 +289,7 @@ int main(void)
   MX_TIM1_Init();
   MX_CRC_Init();
   MX_TIM2_Init();
-  /* MX_USB_DEVICE_Init(); */
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   us_timer_init();
@@ -309,14 +325,12 @@ int main(void)
   HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 
   flash_init(&flash, GD5F1GQ5XE);
-  flash_mount(&flash, &flash_cfg);
-  /* MX_USB_DEVICE_Init(); */
-  uint32_t boot_count = flash_boot_count(&flash, false);
-  lfs_file_t packet_file;
-  flash_open(&flash, &packet_file, "packets");
-
-  __HAL_UART_CLEAR_OREFLAG(&huart5);
-  HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+  int32_t fs_size = flash_mount(&flash, &flash_cfg);
+  if (fs_size < 0) flash_enabled = false;
+  if (flash_enabled) {
+    uint32_t boot_count = flash_boot_count(&flash, false);
+    uint32_t file_size = flash_open(&flash, &packet_file, "packets");
+  }
 
   /* USER CODE END 2 */
 
@@ -352,25 +366,22 @@ int main(void)
       packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
       packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
 
-		  if (!estimator_init) {
-			  orientation_estimator_reset_from_accel(&estimator, packet.acceleration_x_mss, packet.acceleration_y_mss, packet.acceleration_z_mss);
-			  estimator_init = 1;
-		  }
+      if (!estimator_init) {
+        orientation_estimator_reset_from_accel(&estimator, packet.acceleration_x_mss,
+                                               packet.acceleration_y_mss, packet.acceleration_z_mss);
+        estimator_init = 1;
+      }
 
-		  orientation_estimator_add_gyro_reading(
-			  &estimator,
-			  packet.angular_velocity_x_rads,
-			  packet.angular_velocity_y_rads,
-			  packet.angular_velocity_z_rads
-		  );
+      orientation_estimator_add_gyro_reading(&estimator, packet.angular_velocity_x_rads,
+                                             packet.angular_velocity_y_rads,
+                                             packet.angular_velocity_z_rads);
+      packet.w = orientation_estimator_get_w(&estimator);
+      packet.x = -orientation_estimator_get_x(&estimator);
+      packet.y = -orientation_estimator_get_y(&estimator);
+      packet.z = -orientation_estimator_get_z(&estimator);
 
-		  packet.w = orientation_estimator_get_w(&estimator);
-		  packet.x = -orientation_estimator_get_x(&estimator);
-		  packet.y = -orientation_estimator_get_y(&estimator);
-		  packet.z = -orientation_estimator_get_z(&estimator);
-
-		  accel_ready = 0;
-		  gyro_ready = 0;
+      accel_ready = 0;
+      gyro_ready = 0;
     }
 
     uint32_t current_time = HAL_GetTick();
@@ -388,16 +399,17 @@ int main(void)
 
       HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
       camera_fired ^= 1;
+      flash_enabled = false;
     }
 
     packet.status = (camera_fired == 1) ? 1 : 0;
     packet.time_us = get_time_us();
     packet.kf_position_m = bmp_data.pressure;
-
-    packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
+    packet.checksum = calculate_checksum((const uint8_t *) &packet + sizeof(short), sizeof(packet) - 6);
 
     HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
-    if (current_time - prev_flash_write_time >= 10) {
+
+    if (flash_enabled && (current_time - prev_flash_write_time >= 10)) {
       prev_flash_write_time = current_time;
       flash_append(&flash, &packet_file, (uint8_t*) &packet, sizeof(packet));
     }
@@ -405,7 +417,7 @@ int main(void)
     HAL_GPIO_TogglePin(GPIOB, LED_Pin);
   }
 
-  /* flash_close(&flash, &packet_file); */
+  flash_close(&flash, &packet_file);
   flash_unmount(&flash);
   /* USER CODE END 3 */
 }

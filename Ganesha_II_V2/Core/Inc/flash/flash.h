@@ -21,7 +21,7 @@ lfs_ssize_t flash_mount(struct flash_dev *flash, const struct lfs_config *config
 int flash_unmount(struct flash_dev *flash);
 uint32_t flash_boot_count(struct flash_dev *flash, bool update);
 uint32_t flash_open(struct flash_dev *flash, lfs_file_t *file, const char *filename);
-bool flash_append(struct flash_dev *flash, lfs_file_t *file, const uint8_t *bytes, const size_t size);
+bool flash_append(struct flash_dev *flash, lfs_file_t *file, const uint8_t *bytes, uint32_t size);
 int flash_close(struct flash_dev *flash, lfs_file_t *file);
 
 #endif

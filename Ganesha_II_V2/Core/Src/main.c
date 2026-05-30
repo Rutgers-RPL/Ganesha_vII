@@ -3,7 +3,7 @@
   ******************************************************************************
   * @file           : main.c
   * @brief          : Main program body
-  * @author 		: Mahir Shah (mahir.shah@rutgers.edu), Tyler-Odeh Abbassi (tfa21@scarletmail.rutgers.edu)
+  * @author     : Mahir Shah (mahir.shah@rutgers.edu), Tyler-Odeh Abbassi (tfa21@scarletmail.rutgers.edu)
   ******************************************************************************
   * @attention
   *
@@ -20,21 +20,33 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usbd_cdc_if.h"
 #include "bmi08_defs.h"
 #include "bmi088.h"
 #include "CD-PA1616S.h"
 #include "bmp581.h"
+#include "flash.h"
+#include "gd5f1gq5xe.h"
+#include "STRUCTS.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+
 #include "STRUCTS.h"
+
 #include "orientation_estimator.h"
 #include "dumb_timer.h"
 #include "us_timer.h"
+
+#include "lfs.h"
+#include "lfs_util.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,11 +83,53 @@ UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart8;
 DMA_HandleTypeDef hdma_uart8_rx;
 
-PCD_HandleTypeDef hpcd_USB_OTG_FS;
-
 /* USER CODE BEGIN PV */
 //char gps_receive_buffer[BUFFER_SIZE];
 //uint8_t gps_dma_buffer[BUFFER_SIZE];
+
+struct flash_dev flash;
+lfs_file_t packet_file;
+bool flash_enabled = true;
+
+static int flash_sync(const struct lfs_config *c)
+{
+  return LFS_ERR_OK;
+}
+
+static int lfs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t offset,
+                    void *data, lfs_size_t size)
+{
+  if (!gd5f1gq5xe_read(block, offset, data, size)) return LFS_ERR_IO;
+  return LFS_ERR_OK;
+}
+
+static int lfs_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t offset,
+                    const void *data, lfs_size_t size)
+{
+  if (!gd5f1gq5xe_write(block, offset, data, size)) return LFS_ERR_IO;
+  return LFS_ERR_OK;
+}
+
+static int lfs_erase(const struct lfs_config *c, lfs_block_t block)
+{
+  if (!gd5f1gq5xe_erase(block)) return LFS_ERR_IO;
+  return LFS_ERR_OK;
+}
+
+static const struct lfs_config flash_cfg = {
+  .read  = &lfs_read,
+  .prog  = &lfs_prog,
+  .erase = &lfs_erase,
+  .sync  = flash_sync,
+
+  .read_size      = GD5F_PAGE_SIZE,
+  .prog_size      = GD5F_PAGE_SIZE,
+  .block_size     = GD5F_BLOCK_SIZE,
+  .block_count    = GD5F_BLOCK_COUNT,
+  .cache_size     = GD5F_PAGE_SIZE,
+  .lookahead_size = 128,
+  .block_cycles   = 512,
+};
 
 /* USER CODE END PV */
 
@@ -88,7 +142,6 @@ static void MX_SPI1_Init(void);
 static void MX_SPI4_Init(void);
 static void MX_UART5_Init(void);
 static void MX_UART8_Init(void);
-static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_CRC_Init(void);
@@ -109,42 +162,57 @@ struct BMP581 bmp581;
 struct bmp5_sensor_data bmp_data;
 uint8_t bmp581_init_ok = 0;
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-if(huart->Instance == UART5){
-	if(memcmp(camera_buffer, "FIRE", 4) == 0){
-			HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-			// Timer started
-			dumb_timer_clear(&camera_timer);
-			dumb_timer_start(&camera_timer);
-			camera_fired ^= 1;
-
-		}
-	   // __HAL_UART_CLEAR_OREFLAG(&huart5);
-		//HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
-	}
-	__HAL_UART_CLEAR_OREFLAG(&huart5);
-	HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == UART5) {
+    if (memcmp(camera_buffer, "FIRE", 4) == 0) {
+      HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+      // Timer started
+      dumb_timer_clear(&camera_timer);
+      dumb_timer_start(&camera_timer);
+      camera_fired ^= 1;
+    }
+    // __HAL_UART_CLEAR_OREFLAG(&huart5);
+    // HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
+  }
+  __HAL_UART_CLEAR_OREFLAG(&huart5);
+  HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 }
 
+void handle_usb_cdc(uint8_t* buf, uint32_t len)
+{
+  if (memcpy(buf, "PING", len) == 0) {
+    const char msg[] = "Hello!";
+    CDC_Transmit_FS(msg, sizeof(msg));
+  } else if (memcmp(buf, "PACKET", len) == 0) {
+    uint8_t bytes[2048];
+    lfs_ssize_t bytes_read;
 
-uint32_t calculate_checksum(const uint8_t *data, size_t length) {
-    return HAL_CRC_Calculate(&hcrc, (uint32_t *)data, length);
+    lfs_file_seek(&(flash.lfs), &packet_file, 0, LFS_SEEK_SET);
+    while ((bytes_read = lfs_file_read(&(flash.lfs), &packet_file, bytes, sizeof(bytes))) > 0)
+      CDC_Transmit_FS(bytes, sizeof(bytes));
+  }
+}
+
+uint32_t calculate_checksum(const uint8_t *data, size_t length)
+{
+  return HAL_CRC_Calculate(&hcrc, (uint32_t *)data, length);
 }
 
 // Triggers when the timer has run, shutdowns the camera
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-//  if (camera_fired == 1){
-//    //  Timer Stopped
-//    HAL_TIM_Base_Stop_IT(&htim1);
-//    // Camera Stopped
-//    HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-//    camera_fired ^= 1;
-//  }
-
-	// Timer Notes
-	// Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 0.5s
-	//Prescaler = 999, Counter = 7999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 1s
-	//Prescaler = 59999, Counter = 9999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 180s
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  //  if (camera_fired == 1){
+  //    //  Timer Stopped
+  //    HAL_TIM_Base_Stop_IT(&htim1);
+  //    // Camera Stopped
+  //    HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+  //    camera_fired ^= 1;
+  //  }
+  // Timer Notes:
+  // Prescaler = 999, Counter = 3999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 0.5s
+  // Prescaler = 999, Counter = 7999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 1s
+  // Prescaler = 59999, Counter = 9999, APB2 Timer Clock = 8MHZ, Div By 2, Time = 180s
 }
 
 uint8_t bmi088_init_ok = 0;
@@ -155,23 +223,23 @@ volatile uint8_t accel_ready;
 volatile uint8_t gyro_ready;
 
 void HAL_GPIO_EXTI_Callback(uint16_t pin) {
-	if (pin == BMI088_GYRO_INT_PIN) {
-		if (bmi088_init_ok == 0) return;
+  if (pin == BMI088_GYRO_INT_PIN) {
+    if (bmi088_init_ok == 0) return;
 
-		if (!gyro_ready){
-			gyro_ready = 1;
-		}
+    if (!gyro_ready){
+      gyro_ready = 1;
+    }
 
-	} else if (pin == BMI088_ACCEL_INT_PIN) {
-		if (bmi088_init_ok == 0) return;
+  } else if (pin == BMI088_ACCEL_INT_PIN) {
+    if (bmi088_init_ok == 0) return;
 
-		if (!accel_ready){
-			accel_ready = 1;
-		}
+    if (!accel_ready){
+      accel_ready = 1;
+    }
 
-	}
+  }
 
-	__HAL_GPIO_EXTI_CLEAR_FLAG(pin);
+  __HAL_GPIO_EXTI_CLEAR_FLAG(pin);
 }
 
 struct Orientation_Estimator estimator;
@@ -187,9 +255,9 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	  char uart_buf[50];
-	  int uart_buf_len;
-	  uint16_t timer_val;
+  char uart_buf[50];
+  int uart_buf_len;
+  uint16_t timer_val;
 
   /* USER CODE END 1 */
 
@@ -217,11 +285,11 @@ int main(void)
   MX_SPI4_Init();
   MX_UART5_Init();
   MX_UART8_Init();
-  MX_USB_OTG_FS_PCD_Init();
   MX_SPI2_Init();
   MX_TIM1_Init();
   MX_CRC_Init();
   MX_TIM2_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   us_timer_init();
@@ -231,146 +299,133 @@ int main(void)
   dumb_timer_init(&camera_timer, HRS_TO_MS(2));
 
   uint32_t prev_baro_read_time = HAL_GetTick();
-
+  uint32_t prev_flash_write_time = HAL_GetTick();
+  
   uint8_t bmi088_init_try_count = 1;
 
   while (bmi088_init_ok == 0 && bmi088_init_try_count <= 3) {
-	  if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
-		  bmi088_init_ok = 1;
-		  break;
-	  } else {
-		  bmi088_init_try_count++;
-		  HAL_Delay(500);
-	  }
+    if (bmi088_init(&bmi088, &hspi2) == BMI08_OK) {
+      bmi088_init_ok = 1;
+      break;
+    } else {
+      bmi088_init_try_count++;
+      HAL_Delay(500);
+    }
   }
 
   if (bmp581_init(&bmp581, &hi2c2) == BMP5_OK) {
-	  bmp581_init_ok = 1;
+    bmp581_init_ok = 1;
   }
 
+  packet = (ganesha_II_packet){0};
   short magic = 0xBEEF;
   packet.magic = magic;
 
-  packet.status = 0;
-      packet.time_us =0;
-      packet.main_voltage_v = 0.0f;
-      packet.pyro_voltage_v = 0.0f;
-      packet.numSatellites = 0;
-      packet.gpsFixType = 0;
-      packet.latitude_degrees = 0.0f;
-      packet.longitude_degrees = 0.0f;
-      packet.gps_hMSL_m = 0.0f;
-      packet.barometer_hMSL_m = 0.0f;
-      packet.temperature_c = 0.0f;
-      packet.acceleration_x_mss = 0.0f;
-      packet.acceleration_y_mss = 0.0f;
-      packet.acceleration_z_mss = 0.0f;
-      packet.angular_velocity_x_rads = 0.0f;
-      packet.angular_velocity_y_rads = 0.0f;
-      packet.angular_velocity_z_rads = 0.0f;
-      packet.gauss_x = 0.0f;
-      packet.gauss_y = 0.0f;
-      packet.gauss_z = 0.0f;
-      packet.kf_acceleration_mss = 0.0f;
-      packet.kf_velocity_ms = 0.0f;
-      packet.kf_position_m = 0.0f;
-      packet.w = 0.0f;
-      packet.x = 0.0f;
-      packet.y = 0.0f;
-      packet.z = 0.0f;
-      packet.checksum = 0;
+  __HAL_UART_CLEAR_OREFLAG(&huart5);
+  HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
 
-      __HAL_UART_CLEAR_OREFLAG(&huart5);
-      HAL_UART_Receive_IT(&huart5, camera_buffer, 4);
-
+  flash_init(&flash, GD5F1GQ5XE);
+  int32_t fs_size = flash_mount(&flash, &flash_cfg);
+  if (fs_size < 0) flash_enabled = false;
+  if (flash_enabled) {
+    uint32_t boot_count = flash_boot_count(&flash, false);
+    uint32_t file_size = flash_open(&flash, &packet_file, "packets");
+    const char msg[] = "Flash enabled!";
+    HAL_UART_Transmit(&huart5, msg, sizeof(msg), HAL_MAX_DELAY);
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-      while (1)
-      {
-//    	    // If enough time has passed (1 second), toggle LED and get new timestamp
-//    	    if (__HAL_TIM_GET_COUNTER(&htim17) - timer_val >= 10000)
-//    	    {
-//    	      HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-//    	      timer_val = __HAL_TIM_GET_COUNTER(&htim17);
-//      }
+  while (1) {
+    /* HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET); */
+    //          // If enough time has passed (1 second), toggle LED and get new timestamp
+    //          if (__HAL_TIM_GET_COUNTER(&htim17) - timer_val >= 10000)
+    //          {
+    //            HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+    //            timer_val = __HAL_TIM_GET_COUNTER(&htim17);
+    //      }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
-	  packet.latitude_degrees = gps_packet.latitude_degrees;
-	  packet.longitude_degrees = gps_packet.longitude_degrees;
-	  packet.numSatellites = gps_packet.numSatellites;
-	  packet.gpsFixType = gps_packet.gpsFixType;
-	  packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
+    packet.latitude_degrees = gps_packet.latitude_degrees;
+    packet.longitude_degrees = gps_packet.longitude_degrees;
+    packet.numSatellites = gps_packet.numSatellites;
+    packet.gpsFixType = gps_packet.gpsFixType;
+    packet.gps_hMSL_m = gps_packet.gps_hMSL_m;
 
-	  if (accel_ready && gyro_ready){
+    if (accel_ready && gyro_ready) {
+      bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
+      bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
 
-		  bmi088_update_gyro_data(&bmi088, &bmi088_gyro_data);
-		  bmi088_update_accel_data(&bmi088, &bmi088_accel_data);
+      packet.acceleration_x_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.x);
+      packet.acceleration_y_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.y);
+      packet.acceleration_z_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.z);
 
-		  packet.acceleration_x_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.x);
-		  packet.acceleration_y_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.y);
-		  packet.acceleration_z_mss = bmi088_convert_accel_axis_data(&bmi088, bmi088_accel_data.z);
+      packet.angular_velocity_x_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.x);
+      packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
+      packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
 
-		  packet.angular_velocity_x_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.x);
-		  packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
-		  packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
+      if (!estimator_init) {
+        orientation_estimator_reset_from_accel(&estimator, packet.acceleration_x_mss,
+                                               packet.acceleration_y_mss, packet.acceleration_z_mss);
+        estimator_init = 1;
+      }
 
-		  if (!estimator_init) {
-			  orientation_estimator_reset_from_accel(&estimator, packet.acceleration_x_mss, packet.acceleration_y_mss, packet.acceleration_z_mss);
-			  estimator_init = 1;
-		  }
+      orientation_estimator_add_gyro_reading(&estimator, packet.angular_velocity_x_rads,
+                                             packet.angular_velocity_y_rads,
+                                             packet.angular_velocity_z_rads);
+      packet.w = orientation_estimator_get_w(&estimator);
+      packet.x = -orientation_estimator_get_x(&estimator);
+      packet.y = -orientation_estimator_get_y(&estimator);
+      packet.z = -orientation_estimator_get_z(&estimator);
 
-		  orientation_estimator_add_gyro_reading(
-			  &estimator,
-			  packet.angular_velocity_x_rads,
-			  packet.angular_velocity_y_rads,
-			  packet.angular_velocity_z_rads
-		  );
+      accel_ready = 0;
+      gyro_ready = 0;
+    }
 
-		  packet.w = orientation_estimator_get_w(&estimator);
-		  packet.x = -orientation_estimator_get_x(&estimator);
-		  packet.y = -orientation_estimator_get_y(&estimator);
-		  packet.z = -orientation_estimator_get_z(&estimator);
+    uint32_t current_time = HAL_GetTick();
 
-		  accel_ready = 0;
-		  gyro_ready = 0;
+    if (current_time - prev_baro_read_time >= 2) {
+      prev_baro_read_time = current_time;
+      bmp581_update_data(&bmp581, &bmp_data);
+    }
 
-	  }
+    packet.barometer_hMSL_m = bmp581_estimate_altitude_msl(&bmp581, &bmp_data);
+    packet.temperature_c = bmp_data.temperature;
 
-	  uint32_t current_time = HAL_GetTick();
+    if (dumb_timer_done(&camera_timer)) {
+      dumb_timer_clear(&camera_timer);
 
-	  if (current_time - prev_baro_read_time >= 2) {
-	      prev_baro_read_time = current_time;
-		  bmp581_update_data(&bmp581, &bmp_data);
-	  }
+      HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
+      camera_fired ^= 1;
 
-	  packet.barometer_hMSL_m = bmp581_estimate_altitude_msl(&bmp581, &bmp_data);
-	  packet.temperature_c = bmp_data.temperature;
+      if (flash_enabled) {
+        flash_enabled = false;
+        flash_close(&flash, &packet_file);
+        flash_unmount(&flash);
+      }
+    }
 
-	  if (dumb_timer_done(&camera_timer)) {
-		  dumb_timer_clear(&camera_timer);
+    packet.status = (camera_fired == 1) ? 1 : 0;
+    packet.time_us = get_time_us();
+    packet.kf_position_m = bmp_data.pressure;
+    packet.checksum = calculate_checksum((const uint8_t *) &packet + sizeof(short), sizeof(packet) - 6);
 
-		  HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
-		  camera_fired ^= 1;
-	  }
+    HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
 
-	  if (camera_fired == 1){
-		  packet.status = 1;
-	  } else {
-		  packet.status = 0;
-	  }
+    if (flash_enabled && (current_time - prev_flash_write_time >= 10)) {
+      prev_flash_write_time = current_time;
+      flash_append(&flash, &packet_file, (uint8_t*) &packet, sizeof(packet));
+    }
 
-	  packet.kf_position_m = bmp_data.pressure;
+    HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+  }
 
-	  packet.time_us = get_time_us();
-	  packet.checksum = calculate_checksum((const uint8_t *)&packet+sizeof(short), sizeof(packet)-6);
-
-	  HAL_UART_Transmit(&huart5, (uint8_t*)&packet, sizeof(packet), HAL_MAX_DELAY);
-
-	  HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+  if (flash_enabled) {
+    flash_close(&flash, &packet_file);
+    flash_unmount(&flash);
   }
   /* USER CODE END 3 */
 }
@@ -629,11 +684,11 @@ static void MX_SPI4_Init(void)
   hspi4.Instance = SPI4;
   hspi4.Init.Mode = SPI_MODE_MASTER;
   hspi4.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi4.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi4.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi4.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi4.Init.NSS = SPI_NSS_SOFT;
-  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi4.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi4.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -848,42 +903,6 @@ static void MX_UART8_Init(void)
 
 
   /* USER CODE END UART8_Init 2 */
-
-}
-
-/**
-  * @brief USB_OTG_FS Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USB_OTG_FS_PCD_Init(void)
-{
-
-  /* USER CODE BEGIN USB_OTG_FS_Init 0 */
-
-  /* USER CODE END USB_OTG_FS_Init 0 */
-
-  /* USER CODE BEGIN USB_OTG_FS_Init 1 */
-
-  /* USER CODE END USB_OTG_FS_Init 1 */
-  hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
-  hpcd_USB_OTG_FS.Init.dev_endpoints = 9;
-  hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
-  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
-  hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.battery_charging_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
-  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USB_OTG_FS_Init 2 */
-
-  /* USER CODE END USB_OTG_FS_Init 2 */
 
 }
 

@@ -53,6 +53,7 @@ extern TIM_HandleTypeDef htim2;
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void handle_usb_cdc(uint8_t* buf, uint32_t len);
 
 /* USER CODE END EFP */
 

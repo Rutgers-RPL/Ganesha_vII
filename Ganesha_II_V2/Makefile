@@ -41,6 +41,7 @@ Core/Src/flash/gd5f1gq5xe.c \
 Core/Src/flash/w25n01kv.c \
 Core/Src/littlefs/lfs.c \
 Core/Src/littlefs/lfs_util.c \
+Core/Src/orientation_estimator.c \
 Core/Src/main.c \
 Core/Src/CD-PA1616S.c \
 Core/Src/bmi08a.c \

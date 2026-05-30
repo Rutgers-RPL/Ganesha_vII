@@ -330,8 +330,9 @@ int main(void)
   if (flash_enabled) {
     uint32_t boot_count = flash_boot_count(&flash, false);
     uint32_t file_size = flash_open(&flash, &packet_file, "packets");
+    const char msg[] = "Flash enabled!";
+    HAL_UART_Transmit(&huart5, msg, sizeof(msg), HAL_MAX_DELAY);
   }
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -399,7 +400,12 @@ int main(void)
 
       HAL_GPIO_TogglePin(GPIOD, CAM_FIRE_Pin);
       camera_fired ^= 1;
-      flash_enabled = false;
+
+      if (flash_enabled) {
+        flash_enabled = false;
+        flash_close(&flash, &packet_file);
+        flash_unmount(&flash);
+      }
     }
 
     packet.status = (camera_fired == 1) ? 1 : 0;
@@ -417,8 +423,10 @@ int main(void)
     HAL_GPIO_TogglePin(GPIOB, LED_Pin);
   }
 
-  flash_close(&flash, &packet_file);
-  flash_unmount(&flash);
+  if (flash_enabled) {
+    flash_close(&flash, &packet_file);
+    flash_unmount(&flash);
+  }
   /* USER CODE END 3 */
 }
 

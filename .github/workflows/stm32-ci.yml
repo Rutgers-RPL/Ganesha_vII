@@ -10,7 +10,7 @@ on:
 
 defaults:
   run:
-    working_directory: ./Ganesha_II_V2
+    working-directory: ./Ganesha_II_V2
 
 jobs:
   build:

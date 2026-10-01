@@ -8,6 +8,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:      # Allows manual trigger from GitHub UI
 
+defaults:
+  run:
+    working_directory: ./Ganesha_II_V2
+
 jobs:
   build:
     name: Build STM32 Firmware

@@ -8,10 +8,6 @@ on:
     branches: [ "main" ]
   workflow_dispatch:      # Allows manual trigger from GitHub UI
 
-defaults:
-  run:
-    working-directory: ./Ganesha_II_V2
-
 jobs:
   build:
     name: Build STM32 Firmware
@@ -40,17 +36,17 @@ jobs:
 
       - name: Configure CMake (${{ matrix.build_type }})
         run: |
-          cmake --preset ${{ matrix.build_type }}
+          cmake --preset ${{ matrix.build_type }} -S ./Ganesha_II_V2/
 
       - name: Build Firmware
         run: |
-          cmake --build build/${{ matrix.build_type }} --preset ${{ matrix.build_type }} --parallel
+          cmake --build ./Ganesha_II_V2/build/${{ matrix.build_type }} --preset ${{ matrix.build_type }} --parallel
 
       - name: Stage Artifacts
         run: |
           mkdir -p artifacts
           # Finds the compiled .elf and renames it cleanly for the artifact upload step
-          find build/${{ matrix.build_type }} -maxdepth 2 -name "*.elf" -exec cp {} artifacts/${{ github.event.repository.name }}-firmware-${{ matrix.build_type }}.elf \;
+          find Ganesha_II_V2/build/${{ matrix.build_type }} -maxdepth 2 -name "*.elf" -exec cp {} artifacts/${{ github.event.repository.name }}-firmware-${{ matrix.build_type }}.elf \;
 
       - name: Upload Build Artifacts (${{ matrix.build_type }})
         uses: actions/upload-artifact@v7

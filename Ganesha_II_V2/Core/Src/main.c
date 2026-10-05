@@ -175,8 +175,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 }
 
 struct Orientation_Estimator estimator;
-uint8_t estimator_init = 0;
+uint8_t orientation_estimator_initialized = 0;
 
+uint8_t altitude_estimator_initialized = 0;
 /* USER CODE END 0 */
 
 /**
@@ -318,9 +319,9 @@ int main(void)
 		  packet.angular_velocity_y_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.y);
 		  packet.angular_velocity_z_rads = bmi088_convert_gyro_axis_data(&bmi088, bmi088_gyro_data.z);
 
-		  if (!estimator_init) {
+		  if (!orientation_estimator_initialized) {
 			  orientation_estimator_reset_from_accel(&estimator, packet.acceleration_x_mss, packet.acceleration_y_mss, packet.acceleration_z_mss);
-			  estimator_init = 1;
+			  orientation_estimator_initialized = 1;
 		  }
 
 		  orientation_estimator_add_gyro_reading(
@@ -347,7 +348,12 @@ int main(void)
 		  bmp581_update_data(&bmp581, &bmp_data);
 	  }
 
-	  packet.barometer_hMSL_m = bmp581_estimate_altitude_msl(&bmp581, &bmp_data);
+	  if (!altitude_estimator_initialized && (bmp_data.pressure && bmp_data.temperature)) {
+		  bmp581_init_altitude_estimator(&bmp581, &bmp_data);
+		  altitude_estimator_initialized = 1;
+	  }
+
+	  packet.barometer_hMSL_m = bmp581_estimate_altitude_relative(&bmp581, &bmp_data);
 	  packet.temperature_c = bmp_data.temperature;
 
 	  if (dumb_timer_done(&camera_timer)) {
